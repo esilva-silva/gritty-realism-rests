@@ -1,0 +1,80 @@
+name: Release
+
+# Publishes a Foundry-installable release when a version tag is pushed:
+#
+#   git tag v1.0.0 && git push origin v1.0.0
+#
+# The release carries two assets. `module.json` is what Foundry's "Install Module" dialog and
+# its update check read, which is why the manifest field points at `releases/latest` rather than
+# at this specific tag. `module.zip` is the payload, and it must hold module.json at its root —
+# GitHub's own source zipball nests everything under a wrapper directory, so it cannot be used.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+
+      - name: Derive the version from the tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Stamp the manifest
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          jq \
+            --arg version "$VERSION" \
+            --arg url "https://github.com/$REPO" \
+            --arg manifest "https://github.com/$REPO/releases/latest/download/module.json" \
+            --arg download "https://github.com/$REPO/releases/download/$TAG/module.zip" \
+            '.version = $version | .url = $url | .manifest = $manifest | .download = $download' \
+            module.json > module.stamped.json
+          mv module.stamped.json module.json
+          jq -r '"version=\(.version)\nmanifest=\(.manifest)\ndownload=\(.download)"' module.json
+
+      - name: Sanity-check the manifest
+        run: |
+          jq -e '.id == "gritty-realism-rests"' module.json > /dev/null
+          jq -e '.esmodules | index("scripts/main.mjs")' module.json > /dev/null
+          for path in $(jq -r '.esmodules[], .styles[], .languages[].path' module.json); do
+            test -f "$path" || { echo "manifest references a missing file: $path"; exit 1; }
+          done
+
+      - name: Verify the domain logic
+        run: node test/domain.test.mjs
+
+      - name: Build module.zip
+        # Explicit paths keep module.json at the archive root and leave development-only files
+        # (the test harness, the workflow, git metadata) out of what players download.
+        run: |
+          zip -r module.zip \
+            module.json \
+            README.md \
+            LICENSE \
+            scripts \
+            styles \
+            templates \
+            lang
+          unzip -l module.zip
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            module.json
+            module.zip
+          fail_on_unmatched_files: true
+          generate_release_notes: true

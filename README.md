@@ -27,10 +27,28 @@ but *how many* rests have passed since you spent it.
 Paste the manifest URL into Foundry's **Add-on Modules → Install Module** dialog:
 
 ```
-https://github.com/chukeduardo/gritty-realism-rests/releases/latest/download/module.json
+https://github.com/esilva-silva/gritty-realism-rests/releases/latest/download/module.json
 ```
 
-Or drop the folder into `Data/modules/gritty-realism-rests` and restart Foundry.
+This needs at least one published release to exist. Note that the URL must be the manifest
+itself — a `github.com/.../blob/...` link serves an HTML page, and Foundry will reject it with
+`Unexpected token '<'`.
+
+### From source
+
+Copy this folder into your Foundry data directory as `Data/modules/gritty-realism-rests` and
+restart. Foundry reads `module.json` off disk, so no manifest, release or zip is involved. This
+is the quicker loop while developing.
+
+### Cutting a release
+
+Tag and push; the workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml)
+stamps the version into the manifest, runs the domain tests, and publishes `module.json` and a
+`module.zip` whose root holds the manifest:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
 
 After enabling the module, set the system's own **Rest Variant** to **Normal**
 (*Configure Settings → D&D 5e → Rest Variant*). The module controls rest pacing itself, and
