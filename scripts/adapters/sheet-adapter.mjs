@@ -142,16 +142,20 @@ async function injectTab(app, element) {
     nav.append(item);
   }
 
-  // Body section. Claimed synchronously so overlapping renders cannot append it twice.
-  if ( element.querySelector(`section.tab[data-tab="${TAB_ID}"]`) ) return;
-  const section = document.createElement("section");
-  section.className = `tab gritty-realism gritty-tab${isActive ? " active" : ""}`;
-  section.dataset.tab = TAB_ID;
-  section.dataset.group = "primary";
-  sibling.parentElement.append(section);
+  // Body section. It lives outside every ApplicationV2 part, so a re-render leaves it standing
+  // rather than replacing it — which means its contents have to be refreshed explicitly on each
+  // render, or the ledger would only ever update when the sheet was closed and reopened.
+  let section = element.querySelector(`section.tab[data-tab="${TAB_ID}"]`);
+  if ( !section ) {
+    section = document.createElement("section");
+    section.className = "tab gritty-realism gritty-tab";
+    section.dataset.tab = TAB_ID;
+    section.dataset.group = "primary";
+    sibling.parentElement.append(section);
+  }
+  section.classList.toggle("active", isActive);
 
-  section.innerHTML = await renderDisplay(app.actor);
-  attachDisplayListeners(app, section);
+  await refreshDisplay(app, section);
 }
 
 /* -------------------------------------------- */
@@ -171,20 +175,46 @@ async function injectPanel(app, element) {
     ?? element.querySelector(".sheet-body");
   if ( !anchor ) return;
 
-  // Claim the slot synchronously. Rendering the template is async, and overlapping renders
-  // would otherwise each pass the "is it already there?" check and append a second panel.
-  if ( element.querySelector(".gritty-panel") ) return;
-  const wrapper = document.createElement("section");
-  wrapper.classList.add("gritty-realism", "gritty-panel");
-  anchor.prepend(wrapper);
+  // As with the tab, the panel outlives a re-render, so refresh it in place instead of
+  // bailing out when it already exists.
+  let wrapper = element.querySelector(".gritty-panel");
+  if ( !wrapper ) {
+    wrapper = document.createElement("section");
+    wrapper.classList.add("gritty-realism", "gritty-panel");
+    anchor.prepend(wrapper);
+  }
 
-  wrapper.innerHTML = await renderDisplay(app.actor);
-  attachDisplayListeners(app, wrapper);
+  await refreshDisplay(app, wrapper);
 }
 
 /* -------------------------------------------- */
 /*  Shared rendering                            */
 /* -------------------------------------------- */
+
+/** Monotonic counter used to discard the results of superseded renders. */
+let renderToken = 0;
+
+/**
+ * Render the recovery display into a container, replacing whatever was there.
+ *
+ * Template rendering is asynchronous, so two renders firing in quick succession — a rest
+ * completing while the sheet is already refreshing, say — could otherwise resolve out of order
+ * and leave the older markup on screen. Each call claims a token and drops its result if a
+ * newer one has started in the meantime.
+ *
+ * @param {Application} app
+ * @param {HTMLElement} container
+ * @returns {Promise<void>}
+ */
+async function refreshDisplay(app, container) {
+  const token = ++renderToken;
+  const html = await renderDisplay(app.actor);
+  if ( token !== renderToken ) return;
+  if ( !container.isConnected ) return;
+
+  container.innerHTML = html;
+  attachDisplayListeners(app, container);
+}
 
 /**
  * Render the recovery display for an actor.
@@ -264,7 +294,7 @@ function attachDisplayListeners(app, root) {
  */
 function onUpdateActor(actor, changed) {
   if ( !foundry.utils.hasProperty(changed, `flags.${MODULE_ID}`) ) return;
-  if ( actor.sheet?.rendered ) actor.sheet.render(false);
+  if ( actor.sheet?.rendered ) actor.sheet.render({ force: false });
 }
 
 /**

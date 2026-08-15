@@ -41,7 +41,10 @@ export const SETTING_DEFINITIONS = [
   { key: SETTINGS.chatSummary, group: "rest", type: Boolean, default: true },
 
   { key: SETTINGS.trackManualEdits, group: "tracking", type: Boolean, default: true },
-  { key: SETTINGS.trackGmDirectEdits, group: "tracking", type: Boolean, default: false },
+  // Defaults to on. The two failure modes are not symmetric: switched off, a GM who also plays
+  // loses expenditures silently and has no way to notice; switched on, the worst case is a
+  // spurious ledger entry, which is visible on the sheet and removable in one click.
+  { key: SETTINGS.trackGmDirectEdits, group: "tracking", type: Boolean, default: true },
 
   { key: SETTINGS.hideShortRest, group: "integration", type: Boolean, default: true },
   { key: SETTINGS.hideLongRest, group: "integration", type: Boolean, default: true },
