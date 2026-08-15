@@ -324,6 +324,12 @@ export function buildRecoveryUpdates(actor, groups) {
           break;
         }
 
+        case RESOURCE_KINDS.note:
+          // Nothing to restore: a free-standing cooldown simply stops applying. It is still
+          // reported, so the rest summary can say the wound finally closed.
+          applied.push({ label, amount });
+          break;
+
         default:
           log.warn(`Unknown resource kind "${resource.kind}"; skipping recovery for "${label}".`);
       }

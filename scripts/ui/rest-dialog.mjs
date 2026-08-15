@@ -1,4 +1,4 @@
-import { MODULE_ID, t } from "../constants.mjs";
+import { MODULE_ID, REST_QUALITIES, t } from "../constants.mjs";
 import { previewRest } from "../domain/rest-service.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -26,7 +26,8 @@ export default class RestDialog extends HandlebarsApplicationMixin(ApplicationV2
     actions: {
       confirm: RestDialog.#onConfirm,
       cancel: RestDialog.#onCancel,
-      rollHitDie: RestDialog.#onRollHitDie
+      rollHitDie: RestDialog.#onRollHitDie,
+      setQuality: RestDialog.#onSetQuality
     }
   };
 
@@ -55,6 +56,9 @@ export default class RestDialog extends HandlebarsApplicationMixin(ApplicationV2
   /** Whether the dialog closed through the confirm button. @type {boolean} */
   #confirmed = false;
 
+  /** How well the night went. @type {string} */
+  #quality = REST_QUALITIES.full;
+
   /* -------------------------------------------- */
 
   /** @override */
@@ -67,7 +71,7 @@ export default class RestDialog extends HandlebarsApplicationMixin(ApplicationV2
   /**
    * Show the dialog and resolve once the user decides.
    * @param {Actor} actor
-   * @returns {Promise<boolean>}  Whether the rest was confirmed.
+   * @returns {Promise<{confirmed: boolean, quality: string}>}
    */
   static prompt(actor) {
     return new Promise(resolve => {
@@ -82,19 +86,33 @@ export default class RestDialog extends HandlebarsApplicationMixin(ApplicationV2
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    const preview = previewRest(this.actor);
+    const preview = previewRest(this.actor, 1, this.#quality);
     const hd = this.actor.system?.attributes?.hd;
+    const held = new Set(preview.held.map(line => line.id));
 
     return Object.assign(context, {
       actor: this.actor,
       preview,
+      qualities: Object.values(REST_QUALITIES).map(value => ({
+        value,
+        label: t(`Rest.Quality.${value}.Label`),
+        hint: t(`Rest.Quality.${value}.Hint`),
+        active: value === this.#quality
+      })),
       hasRecovering: preview.recovering.length > 0,
       hasProgressing: preview.progressing.length > 0,
-      recovering: preview.recovering.map(line => ({ ...line, showAmount: line.amount > 1 })),
+      recovering: preview.recovering.map(line => ({
+        ...line,
+        showAmount: line.amount > 1,
+        groupLabel: t(`Group.${line.group}`)
+      })),
       progressing: preview.progressing.map(line => ({
         ...line,
         showAmount: line.amount > 1,
-        from: line.remaining + 1,
+        groupLabel: t(`Group.${line.group}`),
+        // A held entry keeps its distance: the rest passes, but this cooldown does not move.
+        frozen: held.has(line.id),
+        from: held.has(line.id) ? line.remaining : line.remaining + 1,
         to: line.remaining
       })),
       hitDice: hd ? {
@@ -112,7 +130,7 @@ export default class RestDialog extends HandlebarsApplicationMixin(ApplicationV2
   /** @override */
   _onClose(options) {
     super._onClose(options);
-    this.#resolve?.(this.#confirmed);
+    this.#resolve?.({ confirmed: this.#confirmed, quality: this.#quality });
     this.#resolve = null;
   }
 
@@ -144,6 +162,18 @@ export default class RestDialog extends HandlebarsApplicationMixin(ApplicationV2
   static async #onRollHitDie(event, target) {
     const denomination = target.dataset.denomination;
     await this.actor.rollHitDie({ denomination });
+    this.render();
+  }
+
+  /**
+   * Switch how well the night went and re-render, so the preview shows what it costs before
+   * anything is committed.
+   * @this {RestDialog}
+   * @param {Event} event
+   * @param {HTMLElement} target
+   */
+  static #onSetQuality(event, target) {
+    this.#quality = target.dataset.quality;
     this.render();
   }
 }

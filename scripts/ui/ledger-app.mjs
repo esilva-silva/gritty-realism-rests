@@ -1,7 +1,8 @@
-import { MODULE_ID, t } from "../constants.mjs";
+import { MODULE_ID, groupOfPeriod, t } from "../constants.mjs";
 import { readState } from "../data/actor-store.mjs";
 import { mutate, advanceRests } from "../domain/rest-service.mjs";
 import { totalDebt } from "../domain/hp-debt.mjs";
+import { promptNewEntry } from "./entry-dialog.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
@@ -27,7 +28,8 @@ export default class LedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
       advance: LedgerApp.#onAdvance,
       setRestIndex: LedgerApp.#onSetRestIndex,
       setDebt: LedgerApp.#onSetDebt,
-      reset: LedgerApp.#onReset
+      reset: LedgerApp.#onReset,
+      addEntry: LedgerApp.#onAddEntry
     }
   };
 
@@ -71,10 +73,13 @@ export default class LedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         .map(entry => ({
           id: entry.id,
           label: entry.label,
+          description: entry.description,
           img: entry.img,
           amount: entry.amount,
           spentAtRestIndex: entry.spentAtRestIndex,
           recoverAtRestIndex: entry.recoverAtRestIndex,
+          group: groupOfPeriod(entry.policy.period),
+          groupLabel: t(`Group.${groupOfPeriod(entry.policy.period)}`),
           origin: t(`Origin.${entry.origin}`),
           matured: entry.recoverAtRestIndex <= state.restIndex
         })),
@@ -157,6 +162,13 @@ export default class LedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
     const input = this.element.querySelector('[name="debtTotal"]');
     const amount = Math.max(0, Math.trunc(Number(input?.value) || 0));
     await this.#apply("setDebt", { amount });
+  }
+
+  /**
+   * @this {LedgerApp}
+   */
+  static async #onAddEntry() {
+    if ( await promptNewEntry(this.actor) ) this.render();
   }
 
   /**

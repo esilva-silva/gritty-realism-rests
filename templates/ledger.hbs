@@ -33,6 +33,7 @@
             <thead>
                 <tr>
                     <th>{{localize "GRITTY.Ledger.Resource"}}</th>
+                    <th>{{localize "GRITTY.Ledger.Type"}}</th>
                     <th class="numeric">{{localize "GRITTY.Ledger.Amount"}}</th>
                     <th class="numeric">{{localize "GRITTY.Ledger.SpentAt"}}</th>
                     <th class="numeric">{{localize "GRITTY.Ledger.RecoverAt"}}</th>
@@ -45,8 +46,9 @@
                 <tr data-entry-id="{{this.id}}" class="{{#if this.matured}}matured{{/if}}">
                     <td class="gritty-resource">
                         {{#if this.img}}<img src="{{this.img}}" alt="" width="18" height="18">{{/if}}
-                        {{this.label}}
+                        <span {{#if this.description}}data-tooltip="{{this.description}}"{{/if}}>{{this.label}}</span>
                     </td>
+                    <td><span class="gritty-group" data-group="{{this.group}}">{{this.groupLabel}}</span></td>
                     <td class="numeric">{{this.amount}}</td>
                     <td class="numeric">{{this.spentAtRestIndex}}</td>
                     <td class="numeric">{{this.recoverAtRestIndex}}</td>
@@ -94,6 +96,10 @@
     </div>
 
     <footer class="gritty-ledger-footer">
+        <button type="button" data-action="addEntry">
+            <i class="fa-solid fa-plus" inert></i>
+            {{localize "GRITTY.Entry.Add"}}
+        </button>
         <button type="button" class="gritty-danger" data-action="reset">
             <i class="fa-solid fa-triangle-exclamation" inert></i>
             {{localize "GRITTY.Ledger.Reset"}}

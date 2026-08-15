@@ -1,4 +1,6 @@
-import { MODULE_ID, SETTINGS, HP_MODES, DEBT_ORDERS, SHEET_PLACEMENTS } from "./constants.mjs";
+import {
+  MODULE_ID, SETTINGS, HP_MODES, DEBT_ORDERS, SHEET_PLACEMENTS, RECOVERY_GROUPS, REST_QUALITIES
+} from "./constants.mjs";
 
 /**
  * Settings Manager.
@@ -35,6 +37,13 @@ export const SETTING_DEFINITIONS = [
     }
   },
 
+  // Which cooldown groups a poor night still credits. Long-rest resources are held back by
+  // default — that is what makes a broken week of sleep different from a restful one.
+  { key: SETTINGS.poorRestShort, group: "restQuality", type: Boolean, default: true },
+  { key: SETTINGS.poorRestDay, group: "restQuality", type: Boolean, default: true },
+  { key: SETTINGS.poorRestHitDice, group: "restQuality", type: Boolean, default: true },
+  { key: SETTINGS.poorRestLong, group: "restQuality", type: Boolean, default: false },
+
   { key: SETTINGS.restDuration, group: "rest", type: Number, default: 480, range: { min: 0, max: 10080 } },
   { key: SETTINGS.exhaustionDelta, group: "rest", type: Number, default: 0, range: { min: -6, max: 6 } },
   { key: SETTINGS.allowPlayerRest, group: "rest", type: Boolean, default: true },
@@ -49,6 +58,7 @@ export const SETTING_DEFINITIONS = [
   { key: SETTINGS.hideShortRest, group: "integration", type: Boolean, default: true },
   { key: SETTINGS.hideLongRest, group: "integration", type: Boolean, default: true },
   { key: SETTINGS.hudIntegration, group: "integration", type: Boolean, default: true },
+  { key: SETTINGS.contextMenu, group: "integration", type: Boolean, default: true },
   {
     key: SETTINGS.sheetPlacement, group: "integration", type: String, default: SHEET_PLACEMENTS.tab,
     choices: {
@@ -70,7 +80,29 @@ export const SETTING_DEFINITIONS = [
 ];
 
 /** Order the groups appear in on the configuration screen. */
-export const SETTING_GROUPS = ["cooldowns", "hitPoints", "rest", "tracking", "integration", "advanced"];
+export const SETTING_GROUPS = [
+  "cooldowns", "restQuality", "hitPoints", "rest", "tracking", "integration", "advanced"
+];
+
+/**
+ * The cooldown groups a rest of the given quality advances.
+ * @param {string} quality  One of {@link REST_QUALITIES}.
+ * @returns {Set<string>}
+ */
+export function creditedGroups(quality) {
+  if ( quality !== REST_QUALITIES.poor ) {
+    return new Set(Object.values(RECOVERY_GROUPS));
+  }
+
+  // "other" covers hand-made and overridden cooldowns, which have no natural period; holding
+  // those back on a poor night would be surprising, so they always advance.
+  const credited = new Set([RECOVERY_GROUPS.other]);
+  if ( setting(SETTINGS.poorRestShort) ) credited.add(RECOVERY_GROUPS.short);
+  if ( setting(SETTINGS.poorRestDay) ) credited.add(RECOVERY_GROUPS.day);
+  if ( setting(SETTINGS.poorRestHitDice) ) credited.add(RECOVERY_GROUPS.hitDice);
+  if ( setting(SETTINGS.poorRestLong) ) credited.add(RECOVERY_GROUPS.long);
+  return credited;
+}
 
 /**
  * Register every setting. Called from `init`.

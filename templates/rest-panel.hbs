@@ -7,6 +7,13 @@
             aria-label="{{localize 'GRITTY.Rest.Label'}}">
         <i class="fa-solid fa-bed" inert></i>
     </button>
+    {{#if mayAdjust}}
+    <button type="button" class="gritty-header-button" data-action="addEntry"
+            data-tooltip="{{localize 'GRITTY.Entry.AddTooltip'}}"
+            aria-label="{{localize 'GRITTY.Entry.Add'}}">
+        <i class="fa-solid fa-plus" inert></i>
+    </button>
+    {{/if}}
     {{#if isGM}}
     <button type="button" class="gritty-header-button" data-action="openLedger"
             data-tooltip="{{localize 'GRITTY.Panel.OpenLedger'}}"
@@ -27,10 +34,11 @@
         <h4>{{localize "GRITTY.Panel.Ready"}}</h4>
         <ul class="gritty-list gritty-recover">
             {{#each ready}}
-            <li>
+            <li data-entry-ids="{{this.id}}">
                 {{#if this.img}}<img src="{{this.img}}" alt="" width="18" height="18">{{/if}}
-                <span class="gritty-label">{{this.label}}</span>
+                <span class="gritty-label" {{#if this.description}}data-tooltip="{{this.description}}"{{/if}}>{{this.label}}</span>
                 {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
+                <span class="gritty-group" data-group="{{this.group}}">{{this.groupLabel}}</span>
             </li>
             {{/each}}
         </ul>
@@ -42,10 +50,11 @@
         <h4>{{localize "GRITTY.Panel.Recovering"}}</h4>
         <ul class="gritty-list gritty-progress">
             {{#each recovering}}
-            <li data-entry-ids="{{this.entryIds}}">
+            <li data-entry-ids="{{this.id}}">
                 {{#if this.img}}<img src="{{this.img}}" alt="" width="18" height="18">{{/if}}
-                <span class="gritty-label">{{this.label}}</span>
+                <span class="gritty-label" {{#if this.description}}data-tooltip="{{this.description}}"{{/if}}>{{this.label}}</span>
                 {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
+                <span class="gritty-group" data-group="{{this.group}}">{{this.groupLabel}}</span>
                 <span class="gritty-remaining">{{this.rests}}</span>
                 {{#if @root.mayAdjust}}
                 <span class="gritty-row-controls">
@@ -63,6 +72,11 @@
                             data-tooltip="{{localize 'GRITTY.Ledger.RecoverNow'}}"
                             aria-label="{{localize 'GRITTY.Ledger.RecoverNow'}}">
                         <i class="fa-solid fa-rotate-left" inert></i>
+                    </button>
+                    <button type="button" data-gritty-adjust="delete"
+                            data-tooltip="{{localize 'GRITTY.Ledger.Delete'}}"
+                            aria-label="{{localize 'GRITTY.Ledger.Delete'}}">
+                        <i class="fa-solid fa-trash" inert></i>
                     </button>
                 </span>
                 {{/if}}

@@ -1,4 +1,4 @@
-import { log } from "../constants.mjs";
+import { log, groupOfPeriod } from "../constants.mjs";
 import { resourceAddress } from "./models.mjs";
 
 /**
@@ -143,40 +143,56 @@ export function groupByResource(entries) {
 }
 
 /**
- * Summarize what is still recovering, one line per resource, ordered by how soon it returns.
+ * List what is recovering, one line per expenditure.
  *
- * Each line carries the ids that produced it, so the sheet can offer per-line controls —
- * nudging a cooldown or handing a resource back — without the caller having to re-derive which
- * entries a row stands for.
+ * Deliberately not aggregated: two level-1 slots spent at different moments are two separate
+ * obligations with their own timers, and collapsing them into "Level 1 Slot ×2" hides exactly
+ * the thing this module exists to track. Recovery is still applied in groups — see
+ * {@link groupByResource} — because that is a question about writes, not about display.
  *
  * @param {import("./models.mjs").RecoveryEntry[]} entries
  * @param {number} restIndex  Current rest index.
- * @returns {Array<{label: string, remaining: number, amount: number, img?: string, ids: string[]}>}
+ * @returns {Array<{
+ *   id: string, label: string, description?: string, remaining: number, amount: number,
+ *   img?: string, period: string, group: string
+ * }>}
  */
 export function summarizePending(entries, restIndex) {
-  /** @type {Map<string, {label: string, remaining: number, amount: number, img?: string, ids: string[]}>} */
-  const lines = new Map();
+  return entries
+    .map(entry => ({
+      id: entry.id,
+      label: entry.label,
+      description: entry.description,
+      remaining: Math.max(0, entry.recoverAtRestIndex - restIndex),
+      amount: entry.amount,
+      img: entry.img,
+      period: entry.policy.period,
+      group: groupOfPeriod(entry.policy.period)
+    }))
+    .sort((a, b) => (a.remaining - b.remaining) || a.label.localeCompare(b.label));
+}
 
-  for ( const entry of entries ) {
-    const remaining = Math.max(0, entry.recoverAtRestIndex - restIndex);
-    // One line per resource per maturity, so "recover at 19: 1 / recover at 22: 1" stays visible.
-    const key = `${resourceAddress(entry.resource)}@${entry.recoverAtRestIndex}`;
-    const line = lines.get(key);
-    if ( line ) {
-      line.amount += entry.amount;
-      line.ids.push(entry.id);
-    } else {
-      lines.set(key, {
-        label: entry.label,
-        remaining,
-        amount: entry.amount,
-        img: entry.img,
-        ids: [entry.id]
-      });
-    }
-  }
+/**
+ * Hold back the entries a rest of this quality does not credit.
+ *
+ * A poor night still advances the rest index — time passed — but the cooldowns it fails to
+ * credit must not creep closer. Pushing their maturity out by one keeps them exactly where they
+ * were relative to the character, without needing a separate counter per recovery period.
+ *
+ * @param {import("./models.mjs").RestState} state
+ * @param {Set<string>} creditedGroups  Groups this rest advances, from {@link RECOVERY_GROUPS}.
+ * @returns {{state: import("./models.mjs").RestState, held: number}}
+ */
+export function holdUncredited(state, creditedGroups) {
+  let held = 0;
 
-  return Array.from(lines.values()).sort((a, b) => (a.remaining - b.remaining) || a.label.localeCompare(b.label));
+  const entries = state.entries.map(entry => {
+    if ( creditedGroups.has(groupOfPeriod(entry.policy.period)) ) return entry;
+    held += 1;
+    return { ...entry, recoverAtRestIndex: entry.recoverAtRestIndex + 1 };
+  });
+
+  return { state: { ...state, entries }, held };
 }
 
 /**

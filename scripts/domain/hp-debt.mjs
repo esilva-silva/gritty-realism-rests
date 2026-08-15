@@ -87,6 +87,23 @@ export function payDebt(state, hitPoints) {
 }
 
 /**
+ * Push every outstanding debt one rest further out.
+ *
+ * Wounds close on the long-rest schedule, so a rest that does not credit long-rest cooldowns
+ * must not let them close either — time passes, but the body does not mend.
+ *
+ * @param {import("./models.mjs").RestState} state
+ * @returns {import("./models.mjs").RestState}
+ */
+export function holdDebt(state) {
+  if ( !state.debt.length ) return state;
+  return {
+    ...state,
+    debt: state.debt.map(entry => ({ ...entry, recoverAtRestIndex: entry.recoverAtRestIndex + 1 }))
+  };
+}
+
+/**
  * Total hit points still owed.
  * @param {import("./models.mjs").RestState} state
  * @returns {number}

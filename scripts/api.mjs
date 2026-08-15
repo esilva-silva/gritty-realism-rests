@@ -1,4 +1,5 @@
-import { MODULE_ID, REST_TYPE, SETTINGS } from "./constants.mjs";
+import { MODULE_ID, REST_TYPE, SETTINGS, REST_QUALITIES, RECOVERY_GROUPS } from "./constants.mjs";
+import { promptNewEntry, promptItemCooldown } from "./ui/entry-dialog.mjs";
 import { setting } from "./settings.mjs";
 import {
   takeRest, advanceRests, partyRest, previewRest,
@@ -153,5 +154,25 @@ export const api = {
   setting,
 
   /** Setting keys, for use with {@link api.setting}. */
-  SETTINGS
+  SETTINGS,
+
+  /** Rest qualities accepted by {@link api.takeRest}. */
+  REST_QUALITIES,
+
+  /** Cooldown groups a rest quality can credit or hold back. */
+  RECOVERY_GROUPS,
+
+  /**
+   * Prompt for a free-standing cooldown — a lingering wound, a curse — and record it.
+   * @param {Actor} actor
+   * @returns {Promise<boolean>}
+   */
+  promptNewEntry,
+
+  /**
+   * Prompt to put an existing item's uses on cooldown by hand.
+   * @param {Item} item
+   * @returns {Promise<boolean>}
+   */
+  promptItemCooldown
 };

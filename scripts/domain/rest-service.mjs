@@ -1,9 +1,13 @@
-import { MODULE_ID, ORIGINS, RESOURCE_KINDS, SETTINGS, log, t } from "../constants.mjs";
-import { setting } from "../settings.mjs";
+import {
+  MODULE_ID, ORIGINS, RESOURCE_KINDS, RECOVERY_GROUPS, REST_QUALITIES, SETTINGS,
+  periodOfGroup, log, t
+} from "../constants.mjs";
+import { setting, creditedGroups } from "../settings.mjs";
 import { readState, writeState, queue, canRest, internalContext } from "../data/actor-store.mjs";
 import { registerHandler, execute, hasAuthority } from "../data/authority.mjs";
 import {
-  mature, split, groupByResource, summarizePending, record, reconcile, remove, reschedule, shift
+  mature, split, groupByResource, summarizePending, record, reconcile, remove, reschedule, shift,
+  holdUncredited
 } from "./recovery-tracker.mjs";
 import { resolvePolicy, costOf } from "./recovery-rules.mjs";
 import { makeEntry, blankState } from "./models.mjs";
@@ -44,17 +48,23 @@ const OP_MUTATE = "mutateState";
  * @param {number} [steps=1]  How many rests ahead to look.
  * @returns {RestPreview}
  */
-export function previewRest(actor, steps = 1) {
-  const state = readState(actor);
-  const nextIndex = state.restIndex + Math.max(1, steps);
+export function previewRest(actor, steps = 1, quality = REST_QUALITIES.full) {
+  const base = readState(actor);
+  const nextIndex = base.restIndex + Math.max(1, steps);
+
+  // Evaluate against the same held-back state the rest itself will use, so switching the
+  // quality in the dialog immediately shows what it costs.
+  const { state } = holdUncredited(base, creditedGroups(quality));
   const { recovered, pending } = split(state, nextIndex);
 
   return {
-    restIndex: state.restIndex,
+    restIndex: base.restIndex,
     nextIndex,
-    recovering: groupByResource(recovered).map(g => ({ label: g.label, amount: g.amount, img: g.entries[0]?.img })),
+    quality,
+    recovering: summarizePending(recovered, nextIndex),
     progressing: summarizePending(pending, nextIndex),
-    debt: debt.totalDebt(state)
+    held: summarizePending(state.entries, nextIndex).filter(l => !creditedGroups(quality).has(l.group)),
+    debt: debt.totalDebt(base)
   };
 }
 
@@ -69,7 +79,7 @@ export function getRecoveryState(actor) {
 
   return {
     restIndex: state.restIndex,
-    ready: groupByResource(recovered).map(g => ({ label: g.label, amount: g.amount, img: g.entries[0]?.img })),
+    ready: summarizePending(recovered, state.restIndex),
     recovering: summarizePending(pending, state.restIndex),
     debt: debt.summarizeDebt(state),
     debtTotal: debt.totalDebt(state)
@@ -118,14 +128,14 @@ export function canTakeRest(actor) {
  * @param {boolean} [options.chat]        Post the rest chat card.
  * @returns {Promise<object|null>}        A report, or `null` if the rest was prevented.
  */
-export async function takeRest(actor, { restId, advanceTime = false, chat } = {}) {
+export async function takeRest(actor, { restId, advanceTime = false, chat, quality = REST_QUALITIES.full } = {}) {
   const check = canTakeRest(actor);
   if ( !check.allowed ) {
     ui.notifications.warn(check.reason);
     return null;
   }
 
-  const preview = previewRest(actor);
+  const preview = previewRest(actor, 1, quality);
 
   /**
    * Fires before a rest begins, on the client that started it.
@@ -142,6 +152,7 @@ export async function takeRest(actor, { restId, advanceTime = false, chat } = {}
     actorUuid: actor.uuid,
     restId: restId ?? foundry.utils.randomID(),
     advanceTime,
+    quality,
     chat: chat ?? setting(SETTINGS.chatSummary)
   });
 }
@@ -157,14 +168,14 @@ export async function takeRest(actor, { restId, advanceTime = false, chat } = {}
  * @param {boolean} [options.advanceTime]
  * @returns {Promise<object[]>}  One report per rest.
  */
-export async function advanceRests(actor, count, { chat = false, advanceTime = false } = {}) {
+export async function advanceRests(actor, count, { chat = false, advanceTime = false, quality = REST_QUALITIES.full } = {}) {
   const total = Math.max(1, Math.trunc(count));
   const check = canTakeRest(actor);
   if ( !check.allowed ) {
     ui.notifications.warn(check.reason);
     return [];
   }
-  return execute(OP_ADVANCE, { actorUuid: actor.uuid, count: total, chat, advanceTime });
+  return execute(OP_ADVANCE, { actorUuid: actor.uuid, count: total, chat, advanceTime, quality });
 }
 
 /**
@@ -265,14 +276,14 @@ export function buildEntry({ actor, descriptor, amount, origin, dedupeKey }) {
  * Register every operation the authoritative client performs. Called once during `init`.
  */
 export function registerRestHandlers() {
-  registerHandler(OP_TAKE_REST, ({ actorUuid, restId, advanceTime, chat }) =>
-    withActor(actorUuid, actor => performRest(actor, { restId, advanceTime, chat })));
+  registerHandler(OP_TAKE_REST, ({ actorUuid, restId, advanceTime, chat, quality }) =>
+    withActor(actorUuid, actor => performRest(actor, { restId, advanceTime, chat, quality })));
 
-  registerHandler(OP_ADVANCE, ({ actorUuid, count, advanceTime, chat }) =>
+  registerHandler(OP_ADVANCE, ({ actorUuid, count, advanceTime, chat, quality }) =>
     withActor(actorUuid, async actor => {
       const reports = [];
       for ( let i = 0; i < count; i++ ) {
-        reports.push(await performRest(actor, { restId: foundry.utils.randomID(), advanceTime, chat }));
+        reports.push(await performRest(actor, { restId: foundry.utils.randomID(), advanceTime, chat, quality }));
       }
       return reports;
     }));
@@ -335,7 +346,7 @@ async function withActor(actorUuid, fn) {
  * @param {object} options
  * @returns {Promise<object>}
  */
-async function performRest(actor, { restId, advanceTime, chat }) {
+async function performRest(actor, { restId, advanceTime, chat, quality = REST_QUALITIES.full }) {
   const state = readState(actor);
 
   // Idempotency: a retried socket request, or a second click that arrived while the first was
@@ -346,12 +357,20 @@ async function performRest(actor, { restId, advanceTime, chat }) {
   }
 
   const newIndex = state.restIndex + 1;
-  const { state: advanced, recovered, pending } = mature(state, newIndex);
+
+  // Hold back what this rest does not credit *before* maturing, so a long-rest cooldown that
+  // was due tonight does not slip through on a badly slept night.
+  const credited = creditedGroups(quality);
+  const { state: withHeld, held } = holdUncredited(state, credited);
+  const { state: advanced, recovered, pending } = mature(withHeld, newIndex);
 
   const groups = groupByResource(recovered);
   const { updateData, updateItems, applied } = buildRecoveryUpdates(actor, groups);
 
-  const hp = debt.processRest(actor, advanced, newIndex);
+  // Hit point debt follows the long-rest schedule, so a rest that does not credit long-rest
+  // cooldowns does not let wounds close either.
+  const beforeHp = credited.has(RECOVERY_GROUPS.long) ? advanced : debt.holdDebt(advanced);
+  const hp = debt.processRest(actor, beforeHp, newIndex);
   Object.assign(updateData, hp.updateData);
 
   const nextState = { ...hp.state, restIndex: newIndex, lastRestId: restId ?? null };
@@ -371,6 +390,8 @@ async function performRest(actor, { restId, advanceTime, chat }) {
     actorUuid: actor.uuid,
     actorName: actor.name,
     restIndex: newIndex,
+    quality,
+    held,
     recovered: applied,
     pending: summarizePending(pending, newIndex),
     healed: hp.healed,
@@ -449,6 +470,61 @@ async function applyMutation(actor, kind, payload) {
     case "shiftEntries":
       state = shift(state, payload.entryIds ?? [payload.entryId], Math.trunc(payload.delta) || 0);
       break;
+
+    case "addEntry": {
+      // A free-standing cooldown with no document behind it: a lingering wound, a curse, a
+      // debt of honour. It restores nothing when it matures — it simply stops being true.
+      const group = payload.group ?? RECOVERY_GROUPS.long;
+      const restCount = Math.max(0, Math.trunc(payload.restCount) || 0);
+      const entry = makeEntry({
+        resource: { kind: RESOURCE_KINDS.note, keyPath: "", key: foundry.utils.randomID() },
+        amount: 1,
+        policy: { period: periodOfGroup(group), restCount, source: "manual" },
+        restIndex: state.restIndex,
+        label: String(payload.label || t("Ledger.UntitledEntry")),
+        description: payload.description ? String(payload.description) : undefined,
+        origin: ORIGINS.gm
+      });
+      state = { ...state, entries: [...state.entries, entry] };
+      Hooks.callAll("grittyRealism.resourceSpent", actor, entry);
+      break;
+    }
+
+    case "addItemCooldown": {
+      // Put an existing item's uses on cooldown by hand, for the small corrections that come up
+      // mid-session — a charge spent off-screen, a feature the GM rules as expended.
+      const item = actor.items.get(payload.itemId);
+      if ( !item ) break;
+      const group = payload.group ?? RECOVERY_GROUPS.long;
+      const restCount = Math.max(0, Math.trunc(payload.restCount) || 0);
+      const amount = Math.max(1, Math.trunc(payload.amount) || 1);
+
+      // Optionally mark the use as spent too, so the sheet agrees with the ledger. The write
+      // carries the module's own context so the watcher does not read it back as a second
+      // expenditure and file a duplicate entry.
+      if ( payload.consume && item.system?.uses?.max ) {
+        const spent = Math.clamp((item.system.uses.spent ?? 0) + amount, 0, item.system.uses.max);
+        await item.update({ "system.uses.spent": spent }, internalContext());
+      }
+
+      const entry = makeEntry({
+        resource: {
+          kind: RESOURCE_KINDS.itemUses,
+          keyPath: "system.uses.spent",
+          key: item.id,
+          itemId: item.id
+        },
+        amount,
+        policy: { period: periodOfGroup(group), restCount, source: "manual" },
+        restIndex: state.restIndex,
+        label: item.name,
+        img: item.img,
+        origin: ORIGINS.gm
+      });
+      state = { ...state, entries: [...state.entries, entry] };
+      Hooks.callAll("grittyRealism.resourceSpent", actor, entry);
+      break;
+    }
 
     case "reschedule":
       state = reschedule(state, payload.entryId, Math.max(0, Math.trunc(payload.recoverAtRestIndex)));

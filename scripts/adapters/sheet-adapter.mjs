@@ -4,6 +4,7 @@ import { canRest } from "../data/actor-store.mjs";
 import { getRecoveryState, canTakeRest, takeRest, mutate } from "../domain/rest-service.mjs";
 import RestDialog from "../ui/rest-dialog.mjs";
 import LedgerApp from "../ui/ledger-app.mjs";
+import { promptNewEntry, promptItemCooldown } from "../ui/entry-dialog.mjs";
 
 /**
  * Character sheet integration.
@@ -32,11 +33,11 @@ export async function promptRest(actor) {
     return;
   }
 
-  const confirmed = await RestDialog.prompt(actor);
+  const { confirmed, quality } = await RestDialog.prompt(actor);
   if ( !confirmed ) return;
 
   // One id per confirmed dialog, so a retry of the same rest is recognised as a repeat.
-  await takeRest(actor, { restId: foundry.utils.randomID() });
+  await takeRest(actor, { restId: foundry.utils.randomID(), quality });
 }
 
 /* -------------------------------------------- */
@@ -229,11 +230,15 @@ function renderDisplay(actor) {
     `modules/${MODULE_ID}/templates/rest-panel.hbs`,
     {
       restIndex: state.restIndex,
-      ready: state.ready.map(line => ({ ...line, showAmount: line.amount > 1 })),
+      ready: state.ready.map(line => ({
+        ...line,
+        showAmount: line.amount > 1,
+        groupLabel: t(`Group.${line.group}`)
+      })),
       recovering: state.recovering.map(line => ({
         ...line,
         showAmount: line.amount > 1,
-        entryIds: line.ids.join(","),
+        groupLabel: t(`Group.${line.group}`),
         rests: (line.remaining === 1)
           ? t("Rest.OneRestRemaining")
           : t("Rest.RestsRemaining", { count: line.remaining })
@@ -267,6 +272,11 @@ function attachDisplayListeners(app, root) {
     promptRest(actor);
   });
 
+  root.querySelector('[data-action="addEntry"]')?.addEventListener("click", async event => {
+    event.preventDefault();
+    await promptNewEntry(actor);
+  });
+
   for ( const button of root.querySelectorAll("[data-gritty-adjust]") ) {
     button.addEventListener("click", async event => {
       event.preventDefault();
@@ -277,6 +287,9 @@ function attachDisplayListeners(app, root) {
       const adjust = button.dataset.grittyAdjust;
       try {
         if ( adjust === "recover" ) await mutate(actor, "recoverNow", { entryIds });
+        else if ( adjust === "delete" ) {
+          for ( const entryId of entryIds ) await mutate(actor, "removeEntry", { entryId });
+        }
         else await mutate(actor, "shiftEntries", { entryIds, delta: adjust === "later" ? 1 : -1 });
       } catch(err) {
         log.failure(`Could not adjust the recovery for "${actor.name}".`, err);
@@ -298,10 +311,34 @@ function onUpdateActor(actor, changed) {
 }
 
 /**
+ * Add "Put on cooldown" to an item's right-click menu.
+ *
+ * `dnd5e.getItemContextOptions` hands over the live `ui.context.menuItems` array, so appending
+ * an entry with the same `{name, icon, condition, callback}` shape the system uses is all that
+ * is required — no sheet class is subclassed and no menu is rebuilt.
+ *
+ * @param {Item} item
+ * @param {object[]} options  Menu entries, mutated in place.
+ */
+function onGetItemContextOptions(item, options) {
+  if ( !setting(SETTINGS.contextMenu) ) return;
+  const actor = item?.actor;
+  if ( !actor || !canRest(actor) || !actor.isOwner ) return;
+
+  options.push({
+    name: "GRITTY.Entry.ContextLabel",
+    icon: '<i class="fa-solid fa-hourglass-half fa-fw"></i>',
+    condition: () => actor.isOwner,
+    callback: () => promptItemCooldown(item)
+  });
+}
+
+/**
  * Attach the sheet hooks. Called once during `ready`.
  */
 export function registerSheetAdapter() {
   Hooks.on("renderBaseActorSheet", onRenderActorSheet);
   Hooks.on("updateActor", onUpdateActor);
+  Hooks.on("dnd5e.getItemContextOptions", onGetItemContextOptions);
   log.debug("Sheet adapter attached.");
 }

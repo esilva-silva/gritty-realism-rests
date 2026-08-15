@@ -137,6 +137,7 @@ function normalizeEntry(raw) {
     },
     origin: Object.values(ORIGINS).includes(raw.origin) ? raw.origin : ORIGINS.manual,
     label: String(raw.label ?? resource.key ?? resource.keyPath),
+    description: (typeof raw.description === "string") ? raw.description : undefined,
     img: (typeof raw.img === "string") ? raw.img : undefined,
     dedupeKey: (typeof raw.dedupeKey === "string") ? raw.dedupeKey : undefined
   };
@@ -177,7 +178,7 @@ function normalizeDebt(raw) {
  * @param {string} [data.dedupeKey]
  * @returns {RecoveryEntry}
  */
-export function makeEntry({ resource, amount, policy, restIndex, label, img, origin, dedupeKey }) {
+export function makeEntry({ resource, amount, policy, restIndex, label, description, img, origin, dedupeKey }) {
   return {
     id: foundry.utils.randomID(),
     resource,
@@ -191,6 +192,7 @@ export function makeEntry({ resource, amount, policy, restIndex, label, img, ori
     },
     origin: origin ?? ORIGINS.manual,
     label,
+    description,
     img,
     dedupeKey
   };

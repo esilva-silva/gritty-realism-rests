@@ -8,6 +8,19 @@
         <span class="gritty-index-next">{{localize "GRITTY.Rest.NextIndex" index=preview.nextIndex}}</span>
     </div>
 
+    <section class="gritty-section gritty-quality">
+        <h3>{{localize "GRITTY.Rest.Quality.Title"}}</h3>
+        <div class="gritty-quality-options">
+            {{#each qualities}}
+            <button type="button" class="gritty-quality-option {{#if this.active}}active{{/if}}"
+                    data-action="setQuality" data-quality="{{this.value}}">
+                <span class="gritty-quality-label">{{this.label}}</span>
+                <span class="gritty-quality-hint">{{this.hint}}</span>
+            </button>
+            {{/each}}
+        </div>
+    </section>
+
     <section class="gritty-section">
         <h3>{{localize "GRITTY.Rest.WillRecover"}}</h3>
         {{#if hasRecovering}}
@@ -17,6 +30,7 @@
                 {{#if this.img}}<img src="{{this.img}}" alt="" width="20" height="20">{{/if}}
                 <span class="gritty-label">{{this.label}}</span>
                 {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
+                <span class="gritty-group" data-group="{{this.group}}">{{this.groupLabel}}</span>
             </li>
             {{/each}}
         </ul>
@@ -30,11 +44,19 @@
         {{#if hasProgressing}}
         <ul class="gritty-list gritty-progress">
             {{#each progressing}}
-            <li>
+            <li class="{{#if this.frozen}}frozen{{/if}}">
                 {{#if this.img}}<img src="{{this.img}}" alt="" width="20" height="20">{{/if}}
-                <span class="gritty-label">{{this.label}}</span>
+                <span class="gritty-label" {{#if this.description}}data-tooltip="{{this.description}}"{{/if}}>{{this.label}}</span>
                 {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
+                <span class="gritty-group" data-group="{{this.group}}">{{this.groupLabel}}</span>
+                {{#if this.frozen}}
+                <span class="gritty-remaining gritty-frozen-label">
+                    <i class="fa-solid fa-snowflake" inert></i>
+                    {{localize "GRITTY.Rest.Held" count=this.remaining}}
+                </span>
+                {{else}}
                 <span class="gritty-remaining">{{localize "GRITTY.Rest.Progress" from=this.from to=this.to}}</span>
+                {{/if}}
             </li>
             {{/each}}
         </ul>

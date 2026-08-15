@@ -50,8 +50,8 @@ function check(label, actual, expected) {
 const slot3 = { kind: "spellSlot", keyPath: "system.spells.spell3.value", key: "spell3" };
 const surge = { kind: "activityUses", keyPath: "system.activities.abc.uses.spent", key: "i1.abc", itemId: "i1", activityId: "abc" };
 
-const spend = (state, resource, restCount, label) => makeEntry({
-  resource, amount: 1, policy: { period: "x", restCount, source: "test" },
+const spend = (state, resource, restCount, label, period = "lr") => makeEntry({
+  resource, amount: 1, policy: { period, restCount, source: "test" },
   restIndex: state.restIndex, label
 });
 
@@ -191,19 +191,25 @@ console.log("\n--- Debt order is configurable: LIFO leaves old wounds ageing ---
   check("FIFO clears the old wound instead", fifo.state.debt.map(e => e.remaining), [25]);
 }
 
-console.log("\n--- summarizePending carries entry ids for the row controls ---");
+console.log("\n--- Each expenditure is its own line, even for identical resources ---");
 {
   let state = blankState();
-  state = tracker.record(state, [spend(state, slot3, 7, "Slot A")]).state;
-  state = tracker.record(state, [spend(state, slot3, 7, "Slot B")]).state;
-  state = tracker.record(state, [spend(state, surge, 1, "Action Surge")]).state;
+  state = tracker.record(state, [spend(state, slot3, 7, "Level 1 Spell Slot")]).state;
+  state = tracker.record(state, [spend(state, slot3, 7, "Level 1 Spell Slot")]).state;
+  state = tracker.record(state, [spend(state, surge, 1, "Action Surge", "sr")]).state;
 
   const lines = tracker.summarizePending(state.entries, 0);
-  const slotLine = lines.find(l => l.label.startsWith("Slot"));
-  check("both slots collapse into one line", slotLine.amount, 2);
-  check("and the line knows both ids", slotLine.ids.length, 2);
-  check("ids are the real entry ids",
-    slotLine.ids.every(id => state.entries.some(e => e.id === id)), true);
+  const slotLines = lines.filter(l => l.label === "Level 1 Spell Slot");
+  check("two slots produce two lines, not one of amount 2", slotLines.length, 2);
+  check("each line stands for a single expenditure", slotLines.map(l => l.amount), [1, 1]);
+  check("every line carries its own entry id",
+    lines.every(l => state.entries.some(e => e.id === l.id)), true);
+  check("and the recovery period travels with it",
+    lines.map(l => l.group).sort(), ["long", "long", "short"]);
+
+  // Applying recovery still groups, or two entries would fight over one key path.
+  const groups = tracker.groupByResource(state.entries.filter(e => e.resource.key === "spell3"));
+  check("but recovery still writes once, for 2", [groups.length, groups[0].amount], [1, 2]);
 }
 
 console.log("\n--- shift moves maturity, never earlier than the current rest ---");
@@ -223,6 +229,81 @@ console.log("\n--- shift moves maturity, never earlier than the current rest ---
   for ( let i = 0; i < 20; i++ ) clamped = tracker.shift(clamped, [id], -1);
   check("cannot be pushed before the current index", clamped.entries[0].recoverAtRestIndex, 4);
   check("and so it matures on the very next rest", tracker.mature(clamped, 5).recovered.length, 1);
+}
+
+console.log("\n--- A poor night holds back long-rest cooldowns only ---");
+{
+  const FULL = new Set(["short", "long", "day", "hitDice", "other"]);
+  const POOR = new Set(["short", "day", "hitDice", "other"]);   // long deliberately absent
+
+  let state = blankState();
+  state = tracker.record(state, [spend(state, surge, 1, "Action Surge", "sr")]).state;
+  state = tracker.record(state, [spend(state, slot3, 7, "Fireball", "lr")]).state;
+
+  // A good night: both advance, and the short-rest resource matures at once.
+  const good = tracker.mature(tracker.holdUncredited(state, FULL).state, 1);
+  check("full rest recovers the short-rest resource", good.recovered.map(e => e.label), ["Action Surge"]);
+  check("full rest brings the slot to 6 away",
+    tracker.summarizePending(good.pending, 1)[0].remaining, 6);
+
+  // A poor night: the same short-rest resource still comes back, the slot does not budge.
+  const bad = tracker.holdUncredited(state, POOR);
+  check("one entry was held", bad.held, 1);
+  const badResult = tracker.mature(bad.state, 1);
+  check("poor rest still recovers the short-rest resource",
+    badResult.recovered.map(e => e.label), ["Action Surge"]);
+  check("but the slot is still 7 away, not 6",
+    tracker.summarizePending(badResult.pending, 1)[0].remaining, 7);
+}
+
+console.log("\n--- A long-rest cooldown due tonight does not slip through a poor night ---");
+{
+  const POOR = new Set(["short", "day", "hitDice", "other"]);
+  let state = blankState();
+  state = tracker.record(state, [spend(state, slot3, 1, "Slot due next rest", "lr")]).state;
+  check("it is due at index 1", state.entries[0].recoverAtRestIndex, 1);
+
+  // Holding must happen before maturing, or the entry would qualify on the way past.
+  const held = tracker.holdUncredited(state, POOR);
+  const result = tracker.mature(held.state, 1);
+  check("nothing recovered", result.recovered.length, 0);
+  check("and it is still one rest away", tracker.summarizePending(result.pending, 1)[0].remaining, 1);
+}
+
+console.log("\n--- Debt is held on a poor night too ---");
+{
+  const actor = { system: { attributes: { hp: { value: 30, max: 50, effectiveMax: 50 } } } };
+  let state = blankState();
+  state = debt.incurDebt(state, 12);
+  check("due at rest 7", state.debt[0].recoverAtRestIndex, 7);
+
+  const heldOnce = debt.holdDebt(state);
+  check("a poor night pushes it to 8", heldOnce.debt[0].recoverAtRestIndex, 8);
+  check("so nothing closes at rest 7", debt.processRest(actor, heldOnce, 7).healed, 0);
+  check("while a good night would have closed it", debt.processRest(actor, state, 7).healed, 12);
+}
+
+console.log("\n--- Free-standing note entries mature and vanish ---");
+{
+  let state = blankState();
+  const note = makeEntry({
+    resource: { kind: "note", keyPath: "", key: "n1" },
+    amount: 1,
+    policy: { period: "lr", restCount: 3, source: "manual" },
+    restIndex: 0,
+    label: "Cracked ribs",
+    description: "Disadvantage on Strength checks."
+  });
+  state = tracker.record(state, [note]).state;
+
+  const line = tracker.summarizePending(state.entries, 0)[0];
+  check("the description survives normalization", line.description, "Disadvantage on Strength checks.");
+  check("and it is grouped as a long-rest cooldown", line.group, "long");
+
+  check("nothing at rest 2", tracker.mature(state, 2).recovered.length, 0);
+  const done = tracker.mature(state, 3);
+  check("it clears at rest 3", done.recovered.map(e => e.label), ["Cracked ribs"]);
+  check("and leaves the ledger empty", done.state.entries.length, 0);
 }
 
 console.log("\n--- normalizeState discards malformed entries ---");

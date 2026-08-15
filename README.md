@@ -79,18 +79,43 @@ You may spend hit dice from the same dialog before committing. Confirming advanc
 index by one, restores everything that has matured, and posts the system's own rest card with
 the module's summary attached.
 
+### Rest quality
+
+Every rest is taken as either **slept well** or **slept badly**. A poor night still passes time
+and still advances short-rest, daily and hit-dice cooldowns — but long-rest cooldowns stand
+still, and hit point debt does not close. Seven broken nights in a cell restore nothing.
+
+Which cooldowns a poor night credits is configurable per group, and the preview updates as you
+switch, so you can see what it costs before committing.
+
 ### The ledger
 
 Each expenditure becomes an independent record. Nothing is aggregated, because aggregation is
-exactly what destroys the timers:
+exactly what destroys the timers — two level-1 slots spent an hour apart are two lines, not one
+line reading "×2":
 
 ```
-Rest 10  →  Action Surge     →  recovers at 11
-Rest 10  →  Spell Slot L3    →  recovers at 17
-Rest 13  →  Spell Slot L3    →  recovers at 20
+Rest 10  →  Action Surge     →  recovers at 11   [short rest]
+Rest 10  →  Spell Slot L1    →  recovers at 17   [long rest]
+Rest 10  →  Spell Slot L1    →  recovers at 17   [long rest]
+Rest 13  →  Spell Slot L3    →  recovers at 20   [long rest]
 ```
 
-The sheet panel and the GM ledger both show these separately.
+Every line carries the recovery period it came from, which is what the rest quality reasons
+about. Recovery is still applied in groups behind the scenes — two matured slots are one write,
+not two fighting over the same field.
+
+### Adjusting by hand
+
+Each recovering line has controls to pull it in a rest, push it out a rest, hand the resource
+back immediately, or drop the entry.
+
+Right-clicking an item on the sheet offers **Put on cooldown**, prefilled from the item's own
+recovery data — for the charge that got spent off-screen.
+
+The **Add entry** button records a cooldown with no document behind it: a lingering wound, a
+curse, a favour owed. Give it a name, a description, a number of rests and a type, and it sits
+in the list until it clears. Nothing is restored when it matures; it simply stops being true.
 
 ### Hit points
 
@@ -138,6 +163,8 @@ All settings live on one screen: **Configure Settings → Gritty Realism Rests �
 | Short / Long / Daily / Hit Dice cooldown | 1 / 7 / 1 / 14 | Rests per recovery period. |
 | Hit point mode | Recovery Debt | Or Gritty Standard. |
 | Healing order | Oldest first (FIFO) | See below. |
+| A poor rest credits short / daily / hit dice | on | Long rest is off — that's the point. |
+| Right-click menu on items | on | Adds "Put on cooldown". |
 | Rest duration | 480 minutes | Used when advancing the world clock. |
 | Exhaustion change per rest | 0 | Set `-1` to mirror long-rest behaviour. |
 | Players may take rests | on | When off, only a GM can start one. |

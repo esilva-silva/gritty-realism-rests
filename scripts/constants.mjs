@@ -45,6 +45,11 @@ export const SETTINGS = {
   hideShortRest: "hideShortRest",
   hideLongRest: "hideLongRest",
   sheetPlacement: "sheetPlacement",
+  contextMenu: "contextMenu",
+  poorRestShort: "poorRestShort",
+  poorRestLong: "poorRestLong",
+  poorRestDay: "poorRestDay",
+  poorRestHitDice: "poorRestHitDice",
   logLevel: "logLevel"
 };
 
@@ -105,7 +110,64 @@ export const RESOURCE_KINDS = {
   activityUses: "activityUses",
   attribute: "attribute",
   resource: "resource",
-  hitDice: "hitDice"
+  hitDice: "hitDice",
+  /** A free-standing entry with no document behind it — a lingering wound, a curse, a favour owed. */
+  note: "note"
+};
+
+/**
+ * Recovery periods collapsed into the groups the rest quality reasons about.
+ * @enum {string}
+ */
+export const RECOVERY_GROUPS = {
+  short: "short",
+  long: "long",
+  day: "day",
+  hitDice: "hitDice",
+  other: "other"
+};
+
+/**
+ * The group a dnd5e recovery period belongs to.
+ * @param {string} period
+ * @returns {string}  One of {@link RECOVERY_GROUPS}.
+ */
+export function groupOfPeriod(period) {
+  switch ( period ) {
+    case "sr": return RECOVERY_GROUPS.short;
+    case "lr": return RECOVERY_GROUPS.long;
+    case "day":
+    case "dawn":
+    case "dusk": return RECOVERY_GROUPS.day;
+    case "hitDice": return RECOVERY_GROUPS.hitDice;
+    default: return RECOVERY_GROUPS.other;
+  }
+}
+
+/**
+ * The canonical period to store for a group chosen by hand.
+ * @param {string} group
+ * @returns {string}
+ */
+export function periodOfGroup(group) {
+  switch ( group ) {
+    case RECOVERY_GROUPS.short: return "sr";
+    case RECOVERY_GROUPS.long: return "lr";
+    case RECOVERY_GROUPS.day: return "day";
+    case RECOVERY_GROUPS.hitDice: return "hitDice";
+    default: return "custom";
+  }
+}
+
+/**
+ * How well the night went. A poor rest still passes time, but does not credit every kind of
+ * cooldown — by default the long-rest ones stand still, so a week of broken sleep never
+ * restores a spell slot.
+ * @enum {string}
+ */
+export const REST_QUALITIES = {
+  full: "full",
+  poor: "poor"
 };
 
 /**
