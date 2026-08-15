@@ -1,0 +1,405 @@
+/* Gritty Realism Rests
+ * Styling leans on the dnd5e / Foundry v13 CSS variables so the module inherits the active
+ * theme instead of imposing its own palette. Every rule is scoped under .gritty-realism to
+ * keep it from leaking into system or other module markup.
+ */
+
+.gritty-realism {
+  --gritty-gap: 0.35rem;
+  --gritty-muted: var(--color-text-subtle, #7a7971);
+  --gritty-rule: var(--color-border-light-tertiary, rgb(0 0 0 / 15%));
+  --gritty-ready: #2f7d4f;
+  --gritty-pending: #8a6d1f;
+  --gritty-debt: #8c2f2f;
+}
+
+/* -------------------------------------------- */
+/*  Shared primitives                           */
+/* -------------------------------------------- */
+
+.gritty-realism .gritty-section {
+  margin-block: 0.6rem 0;
+}
+
+.gritty-realism .gritty-section > h3,
+.gritty-realism .gritty-section > h4 {
+  margin: 0 0 0.25rem;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--gritty-rule);
+  font-size: var(--font-size-13, 0.8125rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gritty-muted);
+}
+
+.gritty-realism .gritty-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gritty-gap);
+}
+
+.gritty-realism .gritty-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--font-size-13, 0.8125rem);
+  line-height: 1.3;
+}
+
+.gritty-realism .gritty-list img {
+  border: none;
+  border-radius: 3px;
+  flex: 0 0 auto;
+  object-fit: cover;
+}
+
+.gritty-realism .gritty-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gritty-realism .gritty-amount {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.gritty-realism .gritty-remaining {
+  flex: 0 0 auto;
+  font-size: var(--font-size-11, 0.6875rem);
+  color: var(--gritty-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gritty-realism .gritty-recover li > i.fa-plus {
+  color: var(--gritty-ready);
+}
+
+.gritty-realism .gritty-progress .gritty-remaining {
+  color: var(--gritty-pending);
+}
+
+.gritty-realism .gritty-empty,
+.gritty-realism .gritty-hint {
+  margin: 0;
+  font-size: var(--font-size-12, 0.75rem);
+  color: var(--gritty-muted);
+  font-style: italic;
+}
+
+.gritty-realism .gritty-debt .gritty-label,
+.gritty-realism .gritty-debt li > i {
+  color: var(--gritty-debt);
+}
+
+/* -------------------------------------------- */
+/*  Rest dialog                                 */
+/* -------------------------------------------- */
+
+.gritty-rest-dialog .gritty-rest-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.25rem;
+}
+
+.gritty-rest-dialog .gritty-index-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 5%);
+}
+
+.gritty-rest-dialog .gritty-index-label {
+  font-size: var(--font-size-11, 0.6875rem);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gritty-muted);
+}
+
+.gritty-rest-dialog .gritty-index-value {
+  font-size: var(--font-size-18, 1.125rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.gritty-rest-dialog .gritty-index-next {
+  margin-left: auto;
+  font-size: var(--font-size-11, 0.6875rem);
+  color: var(--gritty-muted);
+}
+
+.gritty-rest-dialog .gritty-hd-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gritty-gap);
+}
+
+.gritty-rest-dialog .gritty-hd-buttons button {
+  flex: 0 1 auto;
+  width: auto;
+  padding-inline: 0.6rem;
+  white-space: nowrap;
+}
+
+.gritty-rest-dialog .gritty-count {
+  color: var(--gritty-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gritty-rest-dialog .gritty-footer {
+  display: flex;
+  gap: var(--gritty-gap);
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--gritty-rule);
+}
+
+.gritty-rest-dialog .gritty-footer button {
+  flex: 1 1 0;
+}
+
+/* -------------------------------------------- */
+/*  Sheet panel                                 */
+/* -------------------------------------------- */
+
+.gritty-panel {
+  margin-bottom: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--gritty-rule);
+  border-radius: 5px;
+  background: rgb(0 0 0 / 3%);
+}
+
+.gritty-panel .gritty-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.gritty-panel .gritty-panel-header h3 {
+  margin: 0;
+  border: none;
+  font-size: var(--font-size-13, 0.8125rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gritty-panel .gritty-panel-index {
+  margin-left: auto;
+  font-size: var(--font-size-11, 0.6875rem);
+  color: var(--gritty-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gritty-panel .gritty-ledger-button {
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  line-height: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gritty-muted);
+}
+
+.gritty-panel .gritty-ledger-button:hover {
+  color: var(--color-text-primary, inherit);
+}
+
+.gritty-panel .gritty-panel-body {
+  margin-top: 0.25rem;
+}
+
+/* Take Rest button in the sheet header */
+.gritty-take-rest {
+  cursor: pointer;
+}
+
+/* -------------------------------------------- */
+/*  Chat summary                                */
+/* -------------------------------------------- */
+
+.gritty-summary,
+.gritty-standalone {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--gritty-rule);
+}
+
+.gritty-summary .gritty-summary-footer,
+.gritty-standalone .gritty-summary-footer {
+  margin-top: 0.5rem;
+  font-size: var(--font-size-11, 0.6875rem);
+  color: var(--gritty-muted);
+  text-align: right;
+}
+
+.gritty-realism .gritty-healed {
+  margin: 0.4rem 0 0;
+  font-size: var(--font-size-13, 0.8125rem);
+}
+
+.gritty-realism .gritty-healed i {
+  color: var(--gritty-ready);
+  margin-right: 0.25rem;
+}
+
+/* -------------------------------------------- */
+/*  Ledger                                      */
+/* -------------------------------------------- */
+
+.gritty-ledger .gritty-ledger-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 0.5rem;
+  padding: 0.4rem;
+}
+
+.gritty-ledger .gritty-ledger-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--gritty-rule);
+}
+
+.gritty-ledger .gritty-control {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.gritty-ledger .gritty-control label {
+  font-size: var(--font-size-11, 0.6875rem);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gritty-muted);
+}
+
+.gritty-ledger .gritty-control input {
+  width: 4.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.gritty-ledger .gritty-control button {
+  width: auto;
+  padding-inline: 0.5rem;
+  white-space: nowrap;
+}
+
+.gritty-ledger .gritty-ledger-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.gritty-ledger .gritty-ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-12, 0.75rem);
+}
+
+.gritty-ledger .gritty-ledger-table th,
+.gritty-ledger .gritty-ledger-table td {
+  padding: 0.25rem 0.35rem;
+  border-bottom: 1px solid var(--gritty-rule);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.gritty-ledger .gritty-ledger-table th {
+  font-size: var(--font-size-11, 0.6875rem);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gritty-muted);
+  white-space: nowrap;
+}
+
+.gritty-ledger .gritty-ledger-table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gritty-ledger .gritty-ledger-table .gritty-resource {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.gritty-ledger .gritty-ledger-table tr.matured {
+  color: var(--gritty-ready);
+  font-weight: 600;
+}
+
+.gritty-ledger .gritty-ledger-table td.actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.gritty-ledger .gritty-ledger-table td.actions button,
+.gritty-ledger .gritty-list button {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  line-height: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gritty-muted);
+}
+
+.gritty-ledger .gritty-ledger-table td.actions button:hover,
+.gritty-ledger .gritty-list button:hover {
+  color: var(--color-text-primary, inherit);
+}
+
+.gritty-ledger .gritty-ledger-footer {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--gritty-rule);
+}
+
+.gritty-ledger .gritty-danger {
+  color: var(--gritty-debt);
+}
+
+/* -------------------------------------------- */
+/*  Party rest                                  */
+/* -------------------------------------------- */
+
+.gritty-party-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
+.gritty-party-list li label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.gritty-party-list img {
+  border: none;
+  border-radius: 3px;
+}

@@ -1,0 +1,83 @@
+<div class="gritty-rest-body">
+
+    <p class="gritty-hint">{{localize "GRITTY.Rest.Hint"}}</p>
+
+    <div class="gritty-index-row">
+        <span class="gritty-index-label">{{localize "GRITTY.Rest.RestIndex"}}</span>
+        <span class="gritty-index-value">{{preview.restIndex}}</span>
+        <span class="gritty-index-next">{{localize "GRITTY.Rest.NextIndex" index=preview.nextIndex}}</span>
+    </div>
+
+    <section class="gritty-section">
+        <h3>{{localize "GRITTY.Rest.WillRecover"}}</h3>
+        {{#if hasRecovering}}
+        <ul class="gritty-list gritty-recover">
+            {{#each recovering}}
+            <li>
+                {{#if this.img}}<img src="{{this.img}}" alt="" width="20" height="20">{{/if}}
+                <span class="gritty-label">{{this.label}}</span>
+                {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
+            </li>
+            {{/each}}
+        </ul>
+        {{else}}
+        <p class="gritty-empty">{{localize "GRITTY.Rest.NothingRecovers"}}</p>
+        {{/if}}
+    </section>
+
+    <section class="gritty-section">
+        <h3>{{localize "GRITTY.Rest.WillProgress"}}</h3>
+        {{#if hasProgressing}}
+        <ul class="gritty-list gritty-progress">
+            {{#each progressing}}
+            <li>
+                {{#if this.img}}<img src="{{this.img}}" alt="" width="20" height="20">{{/if}}
+                <span class="gritty-label">{{this.label}}</span>
+                {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
+                <span class="gritty-remaining">{{localize "GRITTY.Rest.Progress" from=this.from to=this.to}}</span>
+            </li>
+            {{/each}}
+        </ul>
+        {{else}}
+        <p class="gritty-empty">{{localize "GRITTY.Rest.NothingPending"}}</p>
+        {{/if}}
+    </section>
+
+    {{#if preview.debt}}
+    <section class="gritty-section gritty-debt">
+        <h3>{{localize "GRITTY.Panel.Debt"}}</h3>
+        <p>{{localize "GRITTY.Summary.HitPoints" amount=preview.debt}}</p>
+    </section>
+    {{/if}}
+
+    {{#if hitDice}}
+    <section class="gritty-section gritty-hit-dice">
+        <h3>{{localize "GRITTY.HitDice.Title"}}</h3>
+        <p class="gritty-hint">{{localize "GRITTY.HitDice.Available" value=hitDice.value max=hitDice.max}}</p>
+        {{#if hitDice.available.length}}
+        <div class="gritty-hd-buttons">
+            {{#each hitDice.available}}
+            <button type="button" data-action="rollHitDie" data-denomination="{{this.denomination}}">
+                <i class="fa-solid fa-dice-d20" inert></i>
+                {{this.denomination}} <span class="gritty-count">({{this.count}})</span>
+            </button>
+            {{/each}}
+        </div>
+        {{else}}
+        <p class="gritty-empty">{{localize "GRITTY.HitDice.None"}}</p>
+        {{/if}}
+    </section>
+    {{/if}}
+
+    <footer class="gritty-footer">
+        <button type="button" class="gritty-confirm" data-action="confirm">
+            <i class="fa-solid fa-moon" inert></i>
+            {{localize "GRITTY.Rest.Confirm"}}
+        </button>
+        <button type="button" data-action="cancel">
+            <i class="fa-solid fa-xmark" inert></i>
+            {{localize "GRITTY.Rest.Cancel"}}
+        </button>
+    </footer>
+
+</div>

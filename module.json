@@ -1,0 +1,63 @@
+{
+  "id": "gritty-realism-rests",
+  "title": "Gritty Realism Rests",
+  "description": "Replaces the D&D5e Short/Long Rest flow with a single 8-hour <strong>Take Rest</strong> action and a per-expenditure recovery cooldown ledger. Short-rest resources return after 1 Rest, long-rest resources after 7, and every individual expenditure keeps its own independent timer.",
+  "version": "1.0.0",
+  "authors": [
+    {
+      "name": "Gritty Realism Rests"
+    }
+  ],
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13.351"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "5.2.0",
+          "verified": "5.2.5"
+        }
+      }
+    ],
+    "recommends": [
+      {
+        "id": "midi-qol",
+        "type": "module",
+        "reason": "Automated resource consumption is detected automatically when Midi-QOL is present. Not required."
+      },
+      {
+        "id": "token-action-hud-core",
+        "type": "module",
+        "reason": "Adds the Take Rest action to the HUD and suppresses the native rest actions. Not required."
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/main.mjs"
+  ],
+  "styles": [
+    "styles/gritty-realism-rests.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    },
+    {
+      "lang": "pt-BR",
+      "name": "Português (Brasil)",
+      "path": "lang/pt-BR.json"
+    }
+  ],
+  "socket": true,
+  "url": "https://github.com/chukeduardo/gritty-realism-rests",
+  "manifest": "https://github.com/chukeduardo/gritty-realism-rests/releases/latest/download/module.json",
+  "download": "https://github.com/chukeduardo/gritty-realism-rests/releases/latest/download/module.zip",
+  "license": "LICENSE",
+  "readme": "README.md"
+}

@@ -1,0 +1,50 @@
+<div class="gritty-summary-body">
+
+    {{#if hasRecovered}}
+    <section class="gritty-section">
+        <h4>{{localize "GRITTY.Summary.Recovered"}}</h4>
+        <ul class="gritty-list gritty-recover">
+            {{#each recovered}}
+            <li>
+                <i class="fa-solid fa-plus" inert></i>
+                <span class="gritty-label">{{this.label}}</span>
+                {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
+            </li>
+            {{/each}}
+        </ul>
+    </section>
+    {{/if}}
+
+    {{#if healed}}
+    <p class="gritty-healed">
+        <i class="fa-solid fa-heart" inert></i>
+        {{localize "GRITTY.Summary.HitPoints" amount=healed}}
+    </p>
+    {{/if}}
+
+    {{#if hasPending}}
+    <section class="gritty-section">
+        <h4>{{localize "GRITTY.Summary.StillRecovering"}}</h4>
+        <ul class="gritty-list gritty-progress">
+            {{#each pending}}
+            <li>
+                <span class="gritty-label">{{this.label}}</span>
+                {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
+                <span class="gritty-remaining">{{this.rests}}</span>
+            </li>
+            {{/each}}
+        </ul>
+    </section>
+    {{/if}}
+
+    {{#unless hasRecovered}}
+    {{#unless healed}}
+    <p class="gritty-empty">{{localize "GRITTY.Summary.Nothing"}}</p>
+    {{/unless}}
+    {{/unless}}
+
+    <footer class="gritty-summary-footer">
+        {{localize "GRITTY.Rest.RestIndex"}}: <strong>{{restIndex}}</strong>
+    </footer>
+
+</div>

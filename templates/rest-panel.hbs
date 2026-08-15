@@ -1,0 +1,65 @@
+<header class="gritty-panel-header">
+    <i class="fa-solid fa-moon" inert></i>
+    <h3>{{localize "GRITTY.Panel.Title"}}</h3>
+    <span class="gritty-panel-index">{{localize "GRITTY.Rest.RestIndex"}} {{restIndex}}</span>
+    {{#if isGM}}
+    <button type="button" class="gritty-ledger-button" data-action="openLedger"
+            data-tooltip="{{localize 'GRITTY.Panel.OpenLedger'}}"
+            aria-label="{{localize 'GRITTY.Panel.OpenLedger'}}">
+        <i class="fa-solid fa-scroll" inert></i>
+    </button>
+    {{/if}}
+</header>
+
+<div class="gritty-panel-body">
+
+    {{#if isEmpty}}
+    <p class="gritty-empty">{{localize "GRITTY.Panel.Empty"}}</p>
+    {{/if}}
+
+    {{#if hasReady}}
+    <section class="gritty-section">
+        <h4>{{localize "GRITTY.Panel.Ready"}}</h4>
+        <ul class="gritty-list gritty-recover">
+            {{#each ready}}
+            <li>
+                {{#if this.img}}<img src="{{this.img}}" alt="" width="18" height="18">{{/if}}
+                <span class="gritty-label">{{this.label}}</span>
+                {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
+            </li>
+            {{/each}}
+        </ul>
+    </section>
+    {{/if}}
+
+    {{#if hasRecovering}}
+    <section class="gritty-section">
+        <h4>{{localize "GRITTY.Panel.Recovering"}}</h4>
+        <ul class="gritty-list gritty-progress">
+            {{#each recovering}}
+            <li>
+                {{#if this.img}}<img src="{{this.img}}" alt="" width="18" height="18">{{/if}}
+                <span class="gritty-label">{{this.label}}</span>
+                {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
+                <span class="gritty-remaining">{{this.rests}}</span>
+            </li>
+            {{/each}}
+        </ul>
+    </section>
+    {{/if}}
+
+    {{#if debtTotal}}
+    <section class="gritty-section gritty-debt">
+        <h4>{{localize "GRITTY.Panel.Debt"}}</h4>
+        <ul class="gritty-list">
+            {{#each debt}}
+            <li>
+                <i class="fa-solid fa-droplet" inert></i>
+                <span class="gritty-label">{{localize "GRITTY.Panel.DebtAmount" remaining=this.remaining count=this.rests}}</span>
+            </li>
+            {{/each}}
+        </ul>
+    </section>
+    {{/if}}
+
+</div>

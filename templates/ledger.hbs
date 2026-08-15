@@ -1,0 +1,103 @@
+<div class="gritty-ledger-body">
+
+    <section class="gritty-ledger-controls">
+        <div class="gritty-control">
+            <label for="gritty-rest-index">{{localize "GRITTY.Ledger.SetRestIndex"}}</label>
+            <input type="number" id="gritty-rest-index" name="restIndex" value="{{restIndex}}" min="0" step="1">
+            <button type="button" data-action="setRestIndex">
+                <i class="fa-solid fa-check" inert></i>
+            </button>
+        </div>
+
+        <div class="gritty-control">
+            <label for="gritty-advance">{{localize "GRITTY.Ledger.AdvanceCount"}}</label>
+            <input type="number" id="gritty-advance" name="advanceCount" value="1" min="1" step="1">
+            <button type="button" data-action="advance">
+                <i class="fa-solid fa-forward" inert></i>
+                {{localize "GRITTY.Ledger.AdvanceRests"}}
+            </button>
+        </div>
+
+        <div class="gritty-control">
+            <label for="gritty-debt">{{localize "GRITTY.Ledger.AdjustDebt"}}</label>
+            <input type="number" id="gritty-debt" name="debtTotal" value="{{debtTotal}}" min="0" step="1">
+            <button type="button" data-action="setDebt">
+                <i class="fa-solid fa-check" inert></i>
+            </button>
+        </div>
+    </section>
+
+    <div class="gritty-ledger-scroll">
+
+        <table class="gritty-ledger-table">
+            <thead>
+                <tr>
+                    <th>{{localize "GRITTY.Ledger.Resource"}}</th>
+                    <th class="numeric">{{localize "GRITTY.Ledger.Amount"}}</th>
+                    <th class="numeric">{{localize "GRITTY.Ledger.SpentAt"}}</th>
+                    <th class="numeric">{{localize "GRITTY.Ledger.RecoverAt"}}</th>
+                    <th>{{localize "GRITTY.Ledger.Origin"}}</th>
+                    <th class="actions">{{localize "GRITTY.Ledger.Actions"}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each entries}}
+                <tr data-entry-id="{{this.id}}" class="{{#if this.matured}}matured{{/if}}">
+                    <td class="gritty-resource">
+                        {{#if this.img}}<img src="{{this.img}}" alt="" width="18" height="18">{{/if}}
+                        {{this.label}}
+                    </td>
+                    <td class="numeric">{{this.amount}}</td>
+                    <td class="numeric">{{this.spentAtRestIndex}}</td>
+                    <td class="numeric">{{this.recoverAtRestIndex}}</td>
+                    <td>{{this.origin}}</td>
+                    <td class="actions">
+                        <button type="button" data-action="recoverNow"
+                                data-tooltip="{{localize 'GRITTY.Ledger.RecoverNow'}}"
+                                aria-label="{{localize 'GRITTY.Ledger.RecoverNow'}}">
+                            <i class="fa-solid fa-rotate-left" inert></i>
+                        </button>
+                        <button type="button" data-action="removeEntry"
+                                data-tooltip="{{localize 'GRITTY.Ledger.Delete'}}"
+                                aria-label="{{localize 'GRITTY.Ledger.Delete'}}">
+                            <i class="fa-solid fa-trash" inert></i>
+                        </button>
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        {{#unless hasEntries}}
+        <p class="gritty-empty">{{localize "GRITTY.Ledger.Empty"}}</p>
+        {{/unless}}
+
+        {{#if debtTotal}}
+        <section class="gritty-section">
+            <h4>{{localize "GRITTY.Ledger.DebtSection"}}</h4>
+            <ul class="gritty-list">
+                {{#each debt}}
+                <li data-debt-id="{{this.id}}">
+                    <i class="fa-solid fa-droplet" inert></i>
+                    <span class="gritty-label">{{localize "GRITTY.Panel.DebtAmount" remaining=this.remaining count=this.rests}}</span>
+                    <button type="button" data-action="removeDebt"
+                            data-tooltip="{{localize 'GRITTY.Ledger.Delete'}}"
+                            aria-label="{{localize 'GRITTY.Ledger.Delete'}}">
+                        <i class="fa-solid fa-trash" inert></i>
+                    </button>
+                </li>
+                {{/each}}
+            </ul>
+        </section>
+        {{/if}}
+
+    </div>
+
+    <footer class="gritty-ledger-footer">
+        <button type="button" class="gritty-danger" data-action="reset">
+            <i class="fa-solid fa-triangle-exclamation" inert></i>
+            {{localize "GRITTY.Ledger.Reset"}}
+        </button>
+    </footer>
+
+</div>
