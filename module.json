@@ -2,7 +2,7 @@
   "id": "gritty-realism-rests",
   "title": "Gritty Realism Rests",
   "description": "Replaces the D&D5e Short/Long Rest flow with a single 8-hour <strong>Take Rest</strong> action and a per-expenditure recovery cooldown ledger. Short-rest resources return after 1 Rest, long-rest resources after 7, and every individual expenditure keeps its own independent timer.",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "authors": [
     {
       "name": "Gritty Realism Rests"
