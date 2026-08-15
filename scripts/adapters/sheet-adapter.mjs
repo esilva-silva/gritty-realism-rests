@@ -262,17 +262,17 @@ function renderDisplay(actor) {
 function attachDisplayListeners(app, root) {
   const actor = app.actor;
 
-  root.querySelector('[data-action="openLedger"]')?.addEventListener("click", event => {
+  root.querySelector('[data-gritty-action="openLedger"]')?.addEventListener("click", event => {
     event.preventDefault();
     new LedgerApp(actor).render({ force: true });
   });
 
-  root.querySelector('[data-action="takeRest"]')?.addEventListener("click", event => {
+  root.querySelector('[data-gritty-action="takeRest"]')?.addEventListener("click", event => {
     event.preventDefault();
     promptRest(actor);
   });
 
-  root.querySelector('[data-action="addEntry"]')?.addEventListener("click", async event => {
+  root.querySelector('[data-gritty-action="addEntry"]')?.addEventListener("click", async event => {
     event.preventDefault();
     await promptNewEntry(actor);
   });

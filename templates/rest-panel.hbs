@@ -2,20 +2,20 @@
     <i class="fa-solid fa-moon" inert></i>
     <h3>{{localize "GRITTY.Panel.Title"}}</h3>
     <span class="gritty-panel-index">{{localize "GRITTY.Rest.RestIndex"}} {{restIndex}}</span>
-    <button type="button" class="gritty-header-button" data-action="takeRest"
+    <button type="button" class="gritty-header-button" data-gritty-action="takeRest"
             data-tooltip="{{localize 'GRITTY.Rest.Tooltip'}}"
             aria-label="{{localize 'GRITTY.Rest.Label'}}">
         <i class="fa-solid fa-bed" inert></i>
     </button>
     {{#if mayAdjust}}
-    <button type="button" class="gritty-header-button" data-action="addEntry"
+    <button type="button" class="gritty-header-button" data-gritty-action="addEntry"
             data-tooltip="{{localize 'GRITTY.Entry.AddTooltip'}}"
             aria-label="{{localize 'GRITTY.Entry.Add'}}">
         <i class="fa-solid fa-plus" inert></i>
     </button>
     {{/if}}
     {{#if isGM}}
-    <button type="button" class="gritty-header-button" data-action="openLedger"
+    <button type="button" class="gritty-header-button" data-gritty-action="openLedger"
             data-tooltip="{{localize 'GRITTY.Panel.OpenLedger'}}"
             aria-label="{{localize 'GRITTY.Panel.OpenLedger'}}">
         <i class="fa-solid fa-scroll" inert></i>

@@ -13,8 +13,12 @@
         <div class="gritty-quality-options">
             {{#each qualities}}
             <button type="button" class="gritty-quality-option {{#if this.active}}active{{/if}}"
-                    data-action="setQuality" data-quality="{{this.value}}">
-                <span class="gritty-quality-label">{{this.label}}</span>
+                    data-action="setQuality" data-quality="{{this.value}}"
+                    aria-pressed="{{#if this.active}}true{{else}}false{{/if}}">
+                <span class="gritty-quality-label">
+                    <i class="{{this.icon}}" inert></i>
+                    {{this.label}}
+                </span>
                 <span class="gritty-quality-hint">{{this.hint}}</span>
             </button>
             {{/each}}

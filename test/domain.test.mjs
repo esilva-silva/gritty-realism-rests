@@ -304,6 +304,27 @@ console.log("\n--- Free-standing note entries mature and vanish ---");
   const done = tracker.mature(state, 3);
   check("it clears at rest 3", done.recovered.map(e => e.label), ["Cracked ribs"]);
   check("and leaves the ledger empty", done.state.entries.length, 0);
+
+  // The round trip is the part that matters: entries are normalized on every read, and a note
+  // has no key path to point at. Skipping this is how a note could be written and then quietly
+  // vanish the next time the state was loaded.
+  const reloaded = normalizeState(JSON.parse(JSON.stringify(state)));
+  check("a note survives being written and read back", reloaded.entries.length, 1);
+  check("with its description intact", reloaded.entries[0].description, "Disadvantage on Strength checks.");
+  check("and its maturity intact", reloaded.entries[0].recoverAtRestIndex, 3);
+}
+
+console.log("\n--- Entries that point nowhere are still discarded ---");
+{
+  const s = normalizeState({
+    entries: [
+      { resource: { kind: "itemUses", key: "i" }, amount: 1, policy: { restCount: 7 } },
+      { resource: { kind: "spellSlot", keyPath: "", key: "spell1" }, amount: 1, policy: { restCount: 7 } },
+      { resource: { kind: "note", key: "n" }, amount: 1, policy: { restCount: 2 }, label: "Curse" }
+    ]
+  });
+  check("a real resource without a key path is dropped", s.entries.length, 1);
+  check("only the note survives", s.entries[0].label, "Curse");
 }
 
 console.log("\n--- normalizeState discards malformed entries ---");

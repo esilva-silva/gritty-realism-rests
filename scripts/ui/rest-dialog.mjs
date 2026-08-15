@@ -97,6 +97,7 @@ export default class RestDialog extends HandlebarsApplicationMixin(ApplicationV2
         value,
         label: t(`Rest.Quality.${value}.Label`),
         hint: t(`Rest.Quality.${value}.Hint`),
+        icon: (value === REST_QUALITIES.poor) ? "fa-solid fa-cloud-moon" : "fa-solid fa-bed",
         active: value === this.#quality
       })),
       hasRecovering: preview.recovering.length > 0,

@@ -105,8 +105,13 @@ export function normalizeState(raw) {
 function normalizeEntry(raw) {
   if ( !raw || (typeof raw !== "object") ) return null;
   const resource = raw.resource;
-  if ( !resource?.kind || !resource?.keyPath ) return null;
+  if ( !resource?.kind ) return null;
   if ( !Object.values(RESOURCE_KINDS).includes(resource.kind) ) return null;
+
+  // Everything except a free-standing note points at a real field on a document; without a key
+  // path such an entry could never be applied, so it is discarded rather than kept as a ghost.
+  // A note has nothing to restore and therefore legitimately has no key path at all.
+  if ( (resource.kind !== RESOURCE_KINDS.note) && !resource.keyPath ) return null;
 
   const amount = int(raw.amount, 0);
   if ( amount <= 0 ) return null;
@@ -118,8 +123,8 @@ function normalizeEntry(raw) {
     id: (typeof raw.id === "string") ? raw.id : foundry.utils.randomID(),
     resource: {
       kind: resource.kind,
-      keyPath: String(resource.keyPath),
-      key: String(resource.key ?? resource.keyPath),
+      keyPath: String(resource.keyPath ?? ""),
+      key: String(resource.key ?? resource.keyPath ?? ""),
       itemId: resource.itemId ?? undefined,
       activityId: resource.activityId ?? undefined
     },
