@@ -34,6 +34,7 @@ export const SETTINGS = {
   dailyRestCount: "dailyRestCount",
   hitDiceRestCount: "hitDiceRestCount",
   hpMode: "hpMode",
+  debtOrder: "debtOrder",
   restDuration: "restDuration",
   allowPlayerRest: "allowPlayerRest",
   hudIntegration: "hudIntegration",
@@ -41,8 +42,34 @@ export const SETTINGS = {
   exhaustionDelta: "exhaustionDelta",
   trackManualEdits: "trackManualEdits",
   trackGmDirectEdits: "trackGmDirectEdits",
-  hideNativeRests: "hideNativeRests",
+  hideShortRest: "hideShortRest",
+  hideLongRest: "hideLongRest",
+  sheetPlacement: "sheetPlacement",
   logLevel: "logLevel"
+};
+
+/**
+ * Order in which healing is applied to outstanding hit point debt.
+ * @enum {string}
+ */
+export const DEBT_ORDERS = {
+  /** Oldest wound closes first. */
+  fifo: "fifo",
+  /** Most recent wound closes first, so old debt lingers. */
+  lifo: "lifo"
+};
+
+/**
+ * Where the recovery display lives on the character sheet.
+ * @enum {string}
+ */
+export const SHEET_PLACEMENTS = {
+  /** Its own entry in the sheet's tab strip. */
+  tab: "tab",
+  /** Inline at the top of the details tab. */
+  panel: "panel",
+  /** Not shown at all. */
+  hidden: "hidden"
 };
 
 /**

@@ -34,6 +34,15 @@ const fingerprints = new Map();
 /** Ties the `activityConsumption` and `postActivityConsumption` halves of one usage together. */
 const usageTokens = new WeakMap();
 
+/**
+ * Actors with a hit die roll in flight, mapped to when that intent expires.
+ * @type {Map<string, number>}
+ */
+const hitDieIntents = new Map();
+
+/** How long after `dnd5e.rollHitDie` the follow-up class update is still attributable to it. */
+const HIT_DIE_INTENT_TTL_MS = 5000;
+
 /** Actor paths the diff watcher considers. Deliberately narrow, so ordinary sheet edits are ignored. */
 const TRACKED_ACTOR_PATHS = [/^system\.spells\.[^.]+\.value$/, /^system\.resources\.[^.]+\.value$/];
 
@@ -188,6 +197,43 @@ async function onPostActivityConsumption(activity, usageConfig, messageConfig) {
 }
 
 /* -------------------------------------------- */
+/*  Hit dice                                    */
+/* -------------------------------------------- */
+
+/**
+ * Note that a hit die is being deliberately rolled.
+ *
+ * `Actor5e#rollHitDie` writes `system.hd.spent` to the class item through a plain `update()`
+ * with no options, so the change is indistinguishable from someone editing the field by hand —
+ * and the "a GM editing a sheet is a correction" rule would throw it away. Rolling a hit die is
+ * never a correction, whoever clicked it, so this hook marks the actor for a moment and the
+ * diff watcher honours that regardless of who the user is.
+ *
+ * @param {Roll[]} rolls
+ * @param {object} data
+ * @param {Actor} data.subject
+ */
+function onRollHitDie(rolls, { subject }) {
+  if ( !subject ) return;
+  hitDieIntents.set(subject.id, Date.now() + HIT_DIE_INTENT_TTL_MS);
+}
+
+/**
+ * Was a hit die roll started for this actor a moment ago?
+ * @param {string} actorId
+ * @returns {boolean}
+ */
+function hasHitDieIntent(actorId) {
+  const expires = hitDieIntents.get(actorId);
+  if ( !expires ) return false;
+  if ( expires <= Date.now() ) {
+    hitDieIntents.delete(actorId);
+    return false;
+  }
+  return true;
+}
+
+/* -------------------------------------------- */
 /*  Route 2: direct document edits              */
 /* -------------------------------------------- */
 
@@ -289,7 +335,9 @@ function onPreUpdateItem(item, changed, options, userId) {
     if ( !descriptor ) continue;
 
     if ( isExpenditure(keyPath, delta) ) {
-      if ( !recordSpends ) continue;
+      // A hit die that was actually rolled counts even when the roller is the GM.
+      const deliberate = (keyPath === "system.hd.spent") && hasHitDieIntent(actor.id);
+      if ( !recordSpends && !deliberate ) continue;
       const entry = buildEntry({ actor, descriptor, amount: unitsOf(delta), origin: ORIGINS.manual });
       if ( entry ) spends.push(entry);
     } else {
@@ -348,6 +396,8 @@ function onHitPointChange(actor, changes) {
 export function registerConsumptionWatcher() {
   Hooks.on("dnd5e.activityConsumption", onActivityConsumption);
   Hooks.on("dnd5e.postActivityConsumption", onPostActivityConsumption);
+
+  Hooks.on("dnd5e.rollHitDie", onRollHitDie);
 
   Hooks.on("preUpdateActor", onPreUpdateActor);
   Hooks.on("preUpdateItem", onPreUpdateItem);

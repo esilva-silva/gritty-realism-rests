@@ -3,7 +3,7 @@ import { setting } from "../settings.mjs";
 import { readState, writeState, queue, canRest, internalContext } from "../data/actor-store.mjs";
 import { registerHandler, execute, hasAuthority } from "../data/authority.mjs";
 import {
-  mature, split, groupByResource, summarizePending, record, reconcile, remove, reschedule
+  mature, split, groupByResource, summarizePending, record, reconcile, remove, reschedule, shift
 } from "./recovery-tracker.mjs";
 import { resolvePolicy, costOf } from "./recovery-rules.mjs";
 import { makeEntry, blankState } from "./models.mjs";
@@ -429,17 +429,26 @@ async function applyMutation(actor, kind, payload) {
       break;
 
     case "recoverNow": {
-      // Hand the resource back immediately rather than waiting for the next rest, then drop
-      // the entry so the coming rest does not restore it a second time.
-      const entry = state.entries.find(e => e.id === payload.entryId);
-      if ( !entry ) break;
-      const { updateData, updateItems } = buildRecoveryUpdates(actor, groupByResource([entry]));
+      // Hand the resources back immediately rather than waiting for the next rest, then drop
+      // the entries so the coming rest does not restore them a second time.
+      const ids = payload.entryIds ?? [payload.entryId];
+      const entries = state.entries.filter(e => ids.includes(e.id));
+      if ( !entries.length ) break;
+
+      const { updateData, updateItems } = buildRecoveryUpdates(actor, groupByResource(entries));
       if ( !foundry.utils.isEmpty(updateData) ) await actor.update(updateData, internalContext());
       if ( updateItems.length ) await actor.updateEmbeddedDocuments("Item", updateItems, internalContext());
-      state = remove(state, entry.id);
-      Hooks.callAll("grittyRealism.resourceRecovered", actor, entry);
+
+      for ( const entry of entries ) {
+        state = remove(state, entry.id);
+        Hooks.callAll("grittyRealism.resourceRecovered", actor, entry);
+      }
       break;
     }
+
+    case "shiftEntries":
+      state = shift(state, payload.entryIds ?? [payload.entryId], Math.trunc(payload.delta) || 0);
+      break;
 
     case "reschedule":
       state = reschedule(state, payload.entryId, Math.max(0, Math.trunc(payload.recoverAtRestIndex)));

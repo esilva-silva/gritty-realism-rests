@@ -1,6 +1,7 @@
 import { MODULE_ID, log, t } from "./constants.mjs";
-import { registerSettings } from "./settings.mjs";
+import { registerSettings, registerSettingsMenu } from "./settings.mjs";
 import { api } from "./api.mjs";
+import ConfigApp from "./ui/config-app.mjs";
 
 import { registerStoreHandlers } from "./data/actor-store.mjs";
 import { registerSocket, isAuthority } from "./data/authority.mjs";
@@ -26,6 +27,7 @@ import { registerChat } from "./ui/chat.mjs";
 
 Hooks.once("init", () => {
   registerSettings();
+  registerSettingsMenu(ConfigApp);
 
   registerStoreHandlers();
   registerRestHandlers();

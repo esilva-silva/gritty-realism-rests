@@ -14,17 +14,20 @@ import { setting } from "../settings.mjs";
  */
 
 /**
- * @param {Actor} actor
- * @param {object} config
- * @returns {boolean|void}  `false` cancels the rest.
+ * Build a blocker for one native rest type. Short and long rests are gated independently, so a
+ * table can keep short rests working normally while long rests go through the module.
+ * @param {string} settingKey  Setting that decides whether this rest type is suppressed.
+ * @returns {(actor: Actor, config: object) => boolean|void}
  */
-function blockNativeRest(actor, config) {
-  if ( !setting(SETTINGS.hideNativeRests) ) return;
-  if ( config?.type === REST_TYPE ) return;
+function blockNativeRest(settingKey) {
+  return (actor, config) => {
+    if ( !setting(settingKey) ) return;
+    if ( config?.type === REST_TYPE ) return;
 
-  ui.notifications.warn(t("Warning.NativeRestBlocked"));
-  log.debug(`Blocked a native ${config?.type ?? "unknown"} rest for ${actor?.name}.`);
-  return false;
+    ui.notifications.warn(t("Warning.NativeRestBlocked"));
+    log.debug(`Blocked a native ${config?.type ?? "unknown"} rest for ${actor?.name}.`);
+    return false;
+  };
 }
 
 /**
@@ -48,7 +51,7 @@ function checkRestVariant() {
  * Attach the suppression hooks. Called once during `ready`.
  */
 export function registerNativeRestBlocking() {
-  Hooks.on("dnd5e.preShortRest", blockNativeRest);
-  Hooks.on("dnd5e.preLongRest", blockNativeRest);
+  Hooks.on("dnd5e.preShortRest", blockNativeRest(SETTINGS.hideShortRest));
+  Hooks.on("dnd5e.preLongRest", blockNativeRest(SETTINGS.hideLongRest));
   checkRestVariant();
 }

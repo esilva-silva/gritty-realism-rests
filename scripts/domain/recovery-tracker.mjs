@@ -145,12 +145,16 @@ export function groupByResource(entries) {
 /**
  * Summarize what is still recovering, one line per resource, ordered by how soon it returns.
  *
+ * Each line carries the ids that produced it, so the sheet can offer per-line controls —
+ * nudging a cooldown or handing a resource back — without the caller having to re-derive which
+ * entries a row stands for.
+ *
  * @param {import("./models.mjs").RecoveryEntry[]} entries
  * @param {number} restIndex  Current rest index.
- * @returns {Array<{label: string, remaining: number, amount: number, img?: string}>}
+ * @returns {Array<{label: string, remaining: number, amount: number, img?: string, ids: string[]}>}
  */
 export function summarizePending(entries, restIndex) {
-  /** @type {Map<string, {label: string, remaining: number, amount: number, img?: string}>} */
+  /** @type {Map<string, {label: string, remaining: number, amount: number, img?: string, ids: string[]}>} */
   const lines = new Map();
 
   for ( const entry of entries ) {
@@ -158,11 +162,38 @@ export function summarizePending(entries, restIndex) {
     // One line per resource per maturity, so "recover at 19: 1 / recover at 22: 1" stays visible.
     const key = `${resourceAddress(entry.resource)}@${entry.recoverAtRestIndex}`;
     const line = lines.get(key);
-    if ( line ) line.amount += entry.amount;
-    else lines.set(key, { label: entry.label, remaining, amount: entry.amount, img: entry.img });
+    if ( line ) {
+      line.amount += entry.amount;
+      line.ids.push(entry.id);
+    } else {
+      lines.set(key, {
+        label: entry.label,
+        remaining,
+        amount: entry.amount,
+        img: entry.img,
+        ids: [entry.id]
+      });
+    }
   }
 
   return Array.from(lines.values()).sort((a, b) => (a.remaining - b.remaining) || a.label.localeCompare(b.label));
+}
+
+/**
+ * Move a set of entries' maturity by a number of rests, never earlier than the current index.
+ * @param {import("./models.mjs").RestState} state
+ * @param {string[]} entryIds
+ * @param {number} delta  Rests to add; negative brings recovery closer.
+ * @returns {import("./models.mjs").RestState}
+ */
+export function shift(state, entryIds, delta) {
+  const ids = new Set(entryIds);
+  return {
+    ...state,
+    entries: state.entries.map(entry => ids.has(entry.id)
+      ? { ...entry, recoverAtRestIndex: Math.max(state.restIndex, entry.recoverAtRestIndex + delta) }
+      : entry)
+  };
 }
 
 /**

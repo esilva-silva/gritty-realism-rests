@@ -1,4 +1,4 @@
-import { HP_MODES, SETTINGS, t } from "../constants.mjs";
+import { HP_MODES, DEBT_ORDERS, SETTINGS, t } from "../constants.mjs";
 import { setting } from "../settings.mjs";
 import { makeDebt } from "./models.mjs";
 
@@ -45,10 +45,15 @@ export function incurDebt(state, hitPoints) {
 }
 
 /**
- * Apply healing against outstanding debt, oldest entry first.
+ * Apply healing against outstanding debt.
  *
  * The hit points themselves have already been applied by the system; this only clears the
  * corresponding obligation so the same hit points are not handed back a second time at rest.
+ *
+ * The order is configurable, and the two choices play very differently. Under **FIFO** healing
+ * closes the longest-standing wound first, so debt drains steadily and rarely matures on its
+ * own. Under **LIFO** fresh wounds are treated first and old debt sits there ageing, so a
+ * character who is never fully healed carries injuries that only time will clear.
  *
  * @param {import("./models.mjs").RestState} state
  * @param {number} hitPoints  Real hit points healed, a positive number.
@@ -58,24 +63,27 @@ export function payDebt(state, hitPoints) {
   let budget = Math.trunc(hitPoints);
   if ( (budget <= 0) || !state.debt.length ) return { state, paid: 0 };
 
-  const debt = [];
+  const lifo = setting(SETTINGS.debtOrder) === DEBT_ORDERS.lifo;
+  const order = lifo ? [...state.debt].reverse() : [...state.debt];
+
+  const settled = [];
   let paid = 0;
 
-  // Oldest first: FIFO, so the longest-standing wound closes before a fresh one.
-  for ( const entry of state.debt ) {
+  for ( const entry of order ) {
     if ( budget <= 0 ) {
-      debt.push(entry);
+      settled.push(entry);
       continue;
     }
     const applied = Math.min(entry.remaining, budget);
     budget -= applied;
     paid += applied;
     const remaining = entry.remaining - applied;
-    if ( remaining > 0 ) debt.push({ ...entry, remaining });
+    if ( remaining > 0 ) settled.push({ ...entry, remaining });
   }
 
   if ( !paid ) return { state, paid: 0 };
-  return { state: { ...state, debt }, paid };
+  // Restore chronological order, so maturity checks and the UI stay predictable.
+  return { state: { ...state, debt: lifo ? settled.reverse() : settled }, paid };
 }
 
 /**

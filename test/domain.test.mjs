@@ -22,6 +22,7 @@ const SETTINGS_VALUES = {
   dailyRestCount: 1,
   hitDiceRestCount: 14,
   hpMode: "debt",
+  debtOrder: "fifo",
   restDuration: 480,
   logLevel: "off"
 };
@@ -169,6 +170,59 @@ console.log("\n--- Debt is FIFO and clamps to max hp ---");
   const r = debt.processRest(actor, paid.state, 9);
   check("healing clamped to max", r.updateData, { "system.attributes.hp.value": 60 });
   check("healed only the 5 missing", r.healed, 5);
+}
+
+console.log("\n--- Debt order is configurable: LIFO leaves old wounds ageing ---");
+{
+  SETTINGS_VALUES.debtOrder = "lifo";
+  let state = blankState();
+  state = debt.incurDebt(state, 10);          // old wound, matures at rest 7
+  state = { ...state, restIndex: 5 };
+  state = debt.incurDebt(state, 30);          // fresh wound, matures at rest 12
+
+  const paid = debt.payDebt(state, 15);
+  check("healing still totals 15", paid.paid, 15);
+  check("the fresh wound absorbed it", paid.state.debt.map(e => e.remaining), [10, 15]);
+  check("chronological order preserved",
+    paid.state.debt.map(e => e.recoverAtRestIndex), [7, 12]);
+
+  SETTINGS_VALUES.debtOrder = "fifo";
+  const fifo = debt.payDebt(state, 15);
+  check("FIFO clears the old wound instead", fifo.state.debt.map(e => e.remaining), [25]);
+}
+
+console.log("\n--- summarizePending carries entry ids for the row controls ---");
+{
+  let state = blankState();
+  state = tracker.record(state, [spend(state, slot3, 7, "Slot A")]).state;
+  state = tracker.record(state, [spend(state, slot3, 7, "Slot B")]).state;
+  state = tracker.record(state, [spend(state, surge, 1, "Action Surge")]).state;
+
+  const lines = tracker.summarizePending(state.entries, 0);
+  const slotLine = lines.find(l => l.label.startsWith("Slot"));
+  check("both slots collapse into one line", slotLine.amount, 2);
+  check("and the line knows both ids", slotLine.ids.length, 2);
+  check("ids are the real entry ids",
+    slotLine.ids.every(id => state.entries.some(e => e.id === id)), true);
+}
+
+console.log("\n--- shift moves maturity, never earlier than the current rest ---");
+{
+  let state = blankState();
+  state = { ...state, restIndex: 4 };
+  state = tracker.record(state, [spend(state, slot3, 7, "Slot")]).state;
+  const id = state.entries[0].id;
+  check("starts at 11", state.entries[0].recoverAtRestIndex, 11);
+
+  check("+1 pushes it out", tracker.shift(state, [id], 1).entries[0].recoverAtRestIndex, 12);
+  check("-1 brings it closer", tracker.shift(state, [id], -1).entries[0].recoverAtRestIndex, 10);
+
+  // Clamping matters: an entry scheduled before the current index would never mature,
+  // because maturity is evaluated against restIndex + 1 on the next rest.
+  let clamped = state;
+  for ( let i = 0; i < 20; i++ ) clamped = tracker.shift(clamped, [id], -1);
+  check("cannot be pushed before the current index", clamped.entries[0].recoverAtRestIndex, 4);
+  check("and so it matures on the very next rest", tracker.mature(clamped, 5).recovered.length, 1);
 }
 
 console.log("\n--- normalizeState discards malformed entries ---");

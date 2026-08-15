@@ -1,0 +1,37 @@
+<div class="gritty-config-scroll">
+    {{#each groups}}
+    <fieldset class="gritty-config-group">
+        <legend>{{this.label}}</legend>
+        {{#if this.hint}}<p class="gritty-hint">{{this.hint}}</p>{{/if}}
+
+        {{#each this.fields}}
+        <div class="form-group">
+            <label for="gritty-{{this.key}}">{{this.name}}</label>
+            <div class="form-fields">
+                {{#if this.isBoolean}}
+                <input type="checkbox" id="gritty-{{this.key}}" name="{{this.key}}" {{#if this.checked}}checked{{/if}}>
+                {{/if}}
+
+                {{#if this.isNumber}}
+                <input type="number" id="gritty-{{this.key}}" name="{{this.key}}" value="{{this.value}}"
+                       step="1" min="{{this.min}}" max="{{this.max}}">
+                {{/if}}
+
+                {{#if this.isSelect}}
+                <select id="gritty-{{this.key}}" name="{{this.key}}">
+                    {{#each this.choices}}
+                    <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+                    {{/each}}
+                </select>
+                {{/if}}
+
+                {{#if this.isText}}
+                <input type="text" id="gritty-{{this.key}}" name="{{this.key}}" value="{{this.value}}">
+                {{/if}}
+            </div>
+            {{#if this.hint}}<p class="hint">{{this.hint}}</p>{{/if}}
+        </div>
+        {{/each}}
+    </fieldset>
+    {{/each}}
+</div>

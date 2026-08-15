@@ -17,8 +17,21 @@ import { promptRest } from "./sheet-adapter.mjs";
  * breaking the session.
  */
 
-/** Action ids the dnd5e TAH module uses for the native rests. */
-const NATIVE_REST_ACTIONS = new Set(["shortRest", "longRest"]);
+/** Action ids the dnd5e TAH module uses for the native rests, and the setting gating each. */
+const NATIVE_REST_ACTIONS = {
+  shortRest: SETTINGS.hideShortRest,
+  longRest: SETTINGS.hideLongRest
+};
+
+/**
+ * Is this HUD action a native rest the world has chosen to suppress?
+ * @param {string} actionId
+ * @returns {boolean}
+ */
+function isSuppressedRest(actionId) {
+  const key = NATIVE_REST_ACTIONS[actionId];
+  return !!key && setting(key);
+}
 
 /** Our action id. */
 const TAKE_REST_ACTION = "grittyTakeRest";
@@ -77,7 +90,7 @@ function buildActionExtender(ActionHandlerExtender) {
       if ( !actors.length ) return;
 
       try {
-        if ( setting(SETTINGS.hideNativeRests) ) this.#removeNativeRests();
+        this.#removeNativeRests();
         this.#addTakeRest(actors);
       } catch(err) {
         log.failure("Could not extend the Token Action HUD rest actions.", err);
@@ -85,13 +98,13 @@ function buildActionExtender(ActionHandlerExtender) {
     }
 
     /**
-     * Drop the system module's Short and Long Rest entries from every group that holds them.
+     * Drop whichever native rest entries the world suppresses, leaving the others in place.
      */
     #removeNativeRests() {
       const groups = Object.values(this.groupHandler?.groups ?? {});
       for ( const group of groups ) {
         if ( !group?.actions?.length ) continue;
-        const kept = group.actions.filter(action => !NATIVE_REST_ACTIONS.has(action.system?.actionId ?? action.id));
+        const kept = group.actions.filter(action => !isSuppressedRest(action.system?.actionId ?? action.id));
         if ( kept.length !== group.actions.length ) group.actions = kept;
       }
     }
@@ -137,10 +150,8 @@ function buildPreRollHandler(PreRollHandler) {
 
     /** @override */
     prehandleActionEvent(event, buttonValue) {
-      if ( !setting(SETTINGS.hideNativeRests) ) return false;
-
       const actionId = this.action?.system?.actionId ?? this.action?.id ?? buttonValue;
-      if ( !NATIVE_REST_ACTIONS.has(actionId) ) return false;
+      if ( !isSuppressedRest(actionId) ) return false;
 
       ui.notifications.warn(t("Warning.NativeRestBlocked"));
       return true;

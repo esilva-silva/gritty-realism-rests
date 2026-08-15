@@ -202,7 +202,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.gritty-panel .gritty-ledger-button {
+.gritty-realism .gritty-header-button {
   flex: 0 0 auto;
   width: 1.5rem;
   height: 1.5rem;
@@ -214,12 +214,93 @@
   color: var(--gritty-muted);
 }
 
-.gritty-panel .gritty-ledger-button:hover {
+.gritty-realism .gritty-header-button:hover {
   color: var(--color-text-primary, inherit);
 }
 
 .gritty-panel .gritty-panel-body {
   margin-top: 0.25rem;
+}
+
+/* -------------------------------------------- */
+/*  Sheet tab                                   */
+/* -------------------------------------------- */
+
+.gritty-tab {
+  padding: 0.75rem 1rem;
+  overflow-y: auto;
+}
+
+.gritty-tab .gritty-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--gritty-rule);
+}
+
+.gritty-tab .gritty-panel-header h3 {
+  margin: 0;
+  border: none;
+  font-size: var(--font-size-15, 0.9375rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gritty-tab .gritty-panel-index {
+  margin-left: auto;
+  font-size: var(--font-size-12, 0.75rem);
+  color: var(--gritty-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gritty-tab .gritty-panel-body {
+  margin-top: 0.5rem;
+}
+
+.gritty-tab .gritty-list li {
+  padding: 0.15rem 0;
+}
+
+/* Per-row adjustment controls */
+.gritty-realism .gritty-row-controls {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.1rem;
+  margin-left: 0.25rem;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.gritty-realism .gritty-list li:hover .gritty-row-controls,
+.gritty-realism .gritty-row-controls:focus-within {
+  opacity: 1;
+}
+
+.gritty-realism .gritty-row-controls button {
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  line-height: 1;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--gritty-muted);
+  font-size: var(--font-size-11, 0.6875rem);
+}
+
+.gritty-realism .gritty-row-controls button:hover {
+  border-color: var(--gritty-rule);
+  color: var(--color-text-primary, inherit);
+}
+
+/* Touch and keyboard users never hover, so never hide the controls from them. */
+@media (hover: none) {
+  .gritty-realism .gritty-row-controls {
+    opacity: 1;
+  }
 }
 
 /* Take Rest button in the sheet header */
@@ -375,6 +456,40 @@
 
 .gritty-ledger .gritty-danger {
   color: var(--gritty-debt);
+}
+
+/* -------------------------------------------- */
+/*  Configuration screen                        */
+/* -------------------------------------------- */
+
+.gritty-config .gritty-config-scroll {
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.gritty-config .gritty-config-group {
+  margin-bottom: 0.9rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border: 1px solid var(--gritty-rule);
+  border-radius: 5px;
+}
+
+.gritty-config .gritty-config-group > legend {
+  padding: 0 0.4rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: var(--font-size-12, 0.75rem);
+}
+
+.gritty-config .gritty-config-group > .gritty-hint {
+  margin-bottom: 0.5rem;
+}
+
+.gritty-config .form-group input[type="number"] {
+  max-width: 6rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* -------------------------------------------- */

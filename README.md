@@ -131,19 +131,50 @@ is a short-rest resource and everything else is a long-rest one.
 
 ## Configuration
 
+All settings live on one screen: **Configure Settings → Gritty Realism Rests → Configure Rules**.
+
 | Setting | Default | Notes |
 | --- | --- | --- |
 | Short / Long / Daily / Hit Dice cooldown | 1 / 7 / 1 / 14 | Rests per recovery period. |
 | Hit point mode | Recovery Debt | Or Gritty Standard. |
+| Healing order | Oldest first (FIFO) | See below. |
 | Rest duration | 480 minutes | Used when advancing the world clock. |
-| Players may take rests | on | When off, only a GM can start one. |
-| Hide native rests | on | Removes the buttons and blocks the system flow. |
-| Token Action HUD integration | on | Adds Take Rest, suppresses the native rest actions. |
-| Rest summary in chat | on | |
 | Exhaustion change per rest | 0 | Set `-1` to mirror long-rest behaviour. |
+| Players may take rests | on | When off, only a GM can start one. |
+| Rest summary in chat | on | |
 | Track manual expenditures | on | Catches sheet pips and direct edits. |
-| Track GM direct edits | off | When off, a GM editing a sheet is a correction, not a spend. |
+| Track GM direct edits | off | See below. |
+| Remove the Short Rest button | on | Independent of the long rest. |
+| Remove the Long Rest button | on | Independent of the short rest. |
+| Token Action HUD integration | on | Adds Take Rest, suppresses whichever rests are hidden. |
+| Sheet placement | Its own tab | Or a panel on the details tab, or hidden. |
 | Log level | Error | Console verbosity. |
+
+### Healing order
+
+Which wound healing closes first, and the two choices play very differently.
+
+**Oldest first (FIFO)** drains debt steadily, so it rarely matures on its own — healing keeps
+up with the wounds. **Newest first (LIFO)** treats the fresh injury and leaves the old one
+ageing, so a character who is never fully topped up accumulates damage that only time clears.
+LIFO is the harsher, more attritional reading.
+
+### Track GM direct edits
+
+Off by default, on the assumption that a GM nudging a value on a sheet is fixing something
+rather than playing. **If you are a GM who also plays a character, turn this on** — otherwise
+your own expenditures are silently filed as corrections and never enter the ledger.
+
+Two things are exempt from this rule regardless of the setting, because they are unambiguous
+game actions rather than sheet edits: anything spent through an activity (including via
+Midi-QOL), and rolling a hit die.
+
+### Keeping the native rests
+
+The two rest buttons are gated separately, so a table can keep short rests working as an
+in-fiction breather while long rests go through the module — or the reverse. Turning a switch
+off restores that rest everywhere at once: the sheet button, the Token Action HUD action, and
+the underlying `actor.shortRest()` / `actor.longRest()` flow.
 
 ### Per-item overrides
 
