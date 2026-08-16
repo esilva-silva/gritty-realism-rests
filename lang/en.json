@@ -185,5 +185,16 @@
   "GRITTY.Settings.PoorRestHitDice.Name": "A poor rest still credits hit dice",
   "GRITTY.Settings.PoorRestHitDice.Hint": "",
   "GRITTY.Config.Group.RestQuality.Label": "A Poor Night",
-  "GRITTY.Config.Group.RestQuality.Hint": "Every rest can be taken as slept well or slept badly. A poor night still passes time, but only credits the cooldowns ticked here — hit point debt follows the long-rest setting."
+  "GRITTY.Config.Group.RestQuality.Hint": "Every rest can be taken as slept well or slept badly. A poor night still passes time, but only credits the cooldowns ticked here — hit point debt follows the long-rest setting.",
+  "GRITTY.Panel.ManualOnly": "Does not recover on its own — hand it back from here or from the ledger.",
+  "GRITTY.Config.Group.AutoRecovery.Label": "Automatic Recovery",
+  "GRITTY.Config.Group.AutoRecovery.Hint": "Whether each kind of cooldown clears on its own when its time is up. Switched off, the expenditure still counts down, settles at 0 and stays in the list until somebody hands it back deliberately.",
+  "GRITTY.Settings.AutoRecoverShort.Name": "Short-rest resources recover automatically",
+  "GRITTY.Settings.AutoRecoverShort.Hint": "",
+  "GRITTY.Settings.AutoRecoverLong.Name": "Long-rest resources recover automatically",
+  "GRITTY.Settings.AutoRecoverLong.Hint": "",
+  "GRITTY.Settings.AutoRecoverDay.Name": "Daily resources recover automatically",
+  "GRITTY.Settings.AutoRecoverDay.Hint": "",
+  "GRITTY.Settings.AutoRecoverHitDice.Name": "Hit dice recover automatically",
+  "GRITTY.Settings.AutoRecoverHitDice.Hint": ""
 }

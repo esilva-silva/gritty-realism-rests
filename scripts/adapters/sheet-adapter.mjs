@@ -239,9 +239,11 @@ function renderDisplay(actor) {
         ...line,
         showAmount: line.amount > 1,
         groupLabel: t(`Group.${line.group}`),
-        rests: (line.remaining === 1)
-          ? t("Rest.OneRestRemaining")
-          : t("Rest.RestsRemaining", { count: line.remaining })
+        // A group with automatic recovery switched off shows its bare count — it has stopped
+        // being a countdown and become a standing debt.
+        rests: !line.automatic ? String(line.remaining)
+          : (line.remaining === 1) ? t("Rest.OneRestRemaining")
+            : t("Rest.RestsRemaining", { count: line.remaining })
       })),
       debt: state.debt,
       debtTotal: state.debtTotal,

@@ -105,6 +105,22 @@ Every line carries the recovery period it came from, which is what the rest qual
 about. Recovery is still applied in groups behind the scenes — two matured slots are one write,
 not two fighting over the same field.
 
+### Automatic recovery
+
+Each cooldown group — short rest, long rest, daily, hit dice — can be told not to recover on
+its own. Switched off, the expenditure still counts down, settles at **0** and stays in the
+list with a lock, waiting for somebody to hand it back deliberately. Useful when a resource
+should only return through play: a ritual, downtime, a healer.
+
+### Keeping the native rests in sync
+
+If you leave the Short or Long Rest buttons enabled, using one really does restore resources
+through the system. The module watches for that and clears the matching entries from the
+ledger, so nothing shows as recovering when it is already full, and nothing gets handed back a
+second time later. What each rest restored is read from the system's own configuration rather
+than assumed, so a world with customised rest types is followed exactly. A long rest also
+clears outstanding hit point debt, since it refills hit points outright.
+
 ### Adjusting by hand
 
 Each recovering line has controls to pull it in a rest, push it out a rest, hand the resource
@@ -164,6 +180,7 @@ All settings live on one screen: **Configure Settings → Gritty Realism Rests �
 | Hit point mode | Recovery Debt | Or Gritty Standard. |
 | Healing order | Oldest first (FIFO) | See below. |
 | A poor rest credits short / daily / hit dice | on | Long rest is off — that's the point. |
+| Automatic recovery per group | on | Off means it settles at 0 and waits for a hand. |
 | Right-click menu on items | on | Adds "Put on cooldown". |
 | Rest duration | 480 minutes | Used when advancing the world clock. |
 | Exhaustion change per rest | 0 | Set `-1` to mirror long-rest behaviour. |

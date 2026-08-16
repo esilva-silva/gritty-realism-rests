@@ -327,6 +327,47 @@ console.log("\n--- Entries that point nowhere are still discarded ---");
   check("only the note survives", s.entries[0].label, "Curse");
 }
 
+console.log("\n--- A group with automatic recovery off never matures ---");
+{
+  const ALL = new Set(["short", "long", "day", "hitDice", "other"]);
+  const NO_LONG = new Set(["short", "day", "hitDice", "other"]);
+
+  let state = blankState();
+  state = tracker.record(state, [spend(state, surge, 1, "Action Surge", "sr")]).state;
+  state = tracker.record(state, [spend(state, slot3, 7, "Fireball", "lr")]).state;
+
+  // With everything automatic, rest 7 hands both back — the surge was due long ago.
+  check("automatic: both recover by rest 7",
+    tracker.mature(state, 7, ALL).recovered.map(e => e.label).sort(),
+    ["Action Surge", "Fireball"]);
+
+  // With long-rest recovery switched off, the slot never comes back on its own.
+  const off = tracker.mature(state, 7, NO_LONG);
+  check("manual: the long-rest slot is withheld", off.recovered.map(e => e.label), ["Action Surge"]);
+  check("and stays in the pending list", off.pending.map(e => e.label), ["Fireball"]);
+  check("even far in the future it never matures",
+    tracker.mature(state, 99, NO_LONG).recovered.map(e => e.label), ["Action Surge"]);
+}
+
+console.log("\n--- A non-recovering entry settles at 0 and is flagged manual ---");
+{
+  const NO_LONG = new Set(["short", "day", "hitDice", "other"]);
+  let state = blankState();
+  state = tracker.record(state, [spend(state, slot3, 7, "Fireball", "lr")]).state;
+
+  const atFive = tracker.summarizePending(state.entries, 5, NO_LONG)[0];
+  check("still counting down before it is due", atFive.remaining, 2);
+  check("and already marked as manual", atFive.automatic, false);
+
+  const atTwenty = tracker.summarizePending(state.entries, 20, NO_LONG)[0];
+  check("settles at 0 rather than going negative", atTwenty.remaining, 0);
+
+  // A poor night must not inflate a number nobody is waiting on.
+  const held = tracker.holdUncredited(state, NO_LONG, NO_LONG);
+  check("a poor night does not push it further out", held.held, 0);
+  check("its maturity is untouched", held.state.entries[0].recoverAtRestIndex, 7);
+}
+
 console.log("\n--- normalizeState discards malformed entries ---");
 {
   const s = normalizeState({

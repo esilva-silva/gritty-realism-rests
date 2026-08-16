@@ -81,13 +81,18 @@ export function reconcile(state, resource, amount) {
  * @param {number} atRestIndex  Rest index to evaluate against.
  * @returns {{recovered: import("./models.mjs").RecoveryEntry[], pending: import("./models.mjs").RecoveryEntry[]}}
  */
-export function split(state, atRestIndex) {
+export function split(state, atRestIndex, autoGroups = null) {
   const recovered = [];
   const pending = [];
+
   for ( const entry of state.entries ) {
-    if ( entry.recoverAtRestIndex <= atRestIndex ) recovered.push(entry);
+    // A group whose automatic recovery is switched off never matures. Its entries still count
+    // down and settle at zero, which is what makes them visible as owed rather than forgotten.
+    const automatic = !autoGroups || autoGroups.has(groupOfPeriod(entry.policy.period));
+    if ( automatic && (entry.recoverAtRestIndex <= atRestIndex) ) recovered.push(entry);
     else pending.push(entry);
   }
+
   return { recovered, pending };
 }
 
@@ -102,8 +107,8 @@ export function split(state, atRestIndex) {
  *   pending: import("./models.mjs").RecoveryEntry[]
  * }}
  */
-export function mature(state, newRestIndex) {
-  const { recovered, pending } = split(state, newRestIndex);
+export function mature(state, newRestIndex, autoGroups = null) {
+  const { recovered, pending } = split(state, newRestIndex, autoGroups);
   return {
     state: { ...state, restIndex: newRestIndex, entries: pending },
     recovered,
@@ -151,24 +156,29 @@ export function groupByResource(entries) {
  * {@link groupByResource} — because that is a question about writes, not about display.
  *
  * @param {import("./models.mjs").RecoveryEntry[]} entries
- * @param {number} restIndex  Current rest index.
+ * @param {number} restIndex        Current rest index.
+ * @param {Set<string>} [autoGroups]  Groups that recover on their own; others are marked manual.
  * @returns {Array<{
  *   id: string, label: string, description?: string, remaining: number, amount: number,
- *   img?: string, period: string, group: string
+ *   img?: string, period: string, group: string, automatic: boolean
  * }>}
  */
-export function summarizePending(entries, restIndex) {
+export function summarizePending(entries, restIndex, autoGroups = null) {
   return entries
-    .map(entry => ({
-      id: entry.id,
-      label: entry.label,
-      description: entry.description,
-      remaining: Math.max(0, entry.recoverAtRestIndex - restIndex),
-      amount: entry.amount,
-      img: entry.img,
-      period: entry.policy.period,
-      group: groupOfPeriod(entry.policy.period)
-    }))
+    .map(entry => {
+      const group = groupOfPeriod(entry.policy.period);
+      return {
+        id: entry.id,
+        label: entry.label,
+        description: entry.description,
+        remaining: Math.max(0, entry.recoverAtRestIndex - restIndex),
+        amount: entry.amount,
+        img: entry.img,
+        period: entry.policy.period,
+        group,
+        automatic: !autoGroups || autoGroups.has(group)
+      };
+    })
     .sort((a, b) => (a.remaining - b.remaining) || a.label.localeCompare(b.label));
 }
 
@@ -183,11 +193,17 @@ export function summarizePending(entries, restIndex) {
  * @param {Set<string>} creditedGroups  Groups this rest advances, from {@link RECOVERY_GROUPS}.
  * @returns {{state: import("./models.mjs").RestState, held: number}}
  */
-export function holdUncredited(state, creditedGroups) {
+export function holdUncredited(state, creditedGroups, autoGroups = null) {
   let held = 0;
 
   const entries = state.entries.map(entry => {
-    if ( creditedGroups.has(groupOfPeriod(entry.policy.period)) ) return entry;
+    const group = groupOfPeriod(entry.policy.period);
+    if ( creditedGroups.has(group) ) return entry;
+
+    // A group that never recovers on its own is already parked at zero; pushing it further out
+    // would only inflate a number nobody is waiting on.
+    if ( autoGroups && !autoGroups.has(group) ) return entry;
+
     held += 1;
     return { ...entry, recoverAtRestIndex: entry.recoverAtRestIndex + 1 };
   });

@@ -50,6 +50,10 @@ export const SETTINGS = {
   poorRestLong: "poorRestLong",
   poorRestDay: "poorRestDay",
   poorRestHitDice: "poorRestHitDice",
+  autoRecoverShort: "autoRecoverShort",
+  autoRecoverLong: "autoRecoverLong",
+  autoRecoverDay: "autoRecoverDay",
+  autoRecoverHitDice: "autoRecoverHitDice",
   logLevel: "logLevel"
 };
 

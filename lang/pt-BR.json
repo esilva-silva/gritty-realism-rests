@@ -185,5 +185,16 @@
   "GRITTY.Settings.PoorRestHitDice.Name": "Noite mal dormida ainda conta para dados de vida",
   "GRITTY.Settings.PoorRestHitDice.Hint": "",
   "GRITTY.Config.Group.RestQuality.Label": "Noite Mal Dormida",
-  "GRITTY.Config.Group.RestQuality.Hint": "Todo descanso pode ser feito como bem ou mal descansado. Uma noite ruim ainda faz o tempo passar, mas só conta para os cooldowns marcados aqui — a dívida de pontos de vida segue a opção de descanso longo."
+  "GRITTY.Config.Group.RestQuality.Hint": "Todo descanso pode ser feito como bem ou mal descansado. Uma noite ruim ainda faz o tempo passar, mas só conta para os cooldowns marcados aqui — a dívida de pontos de vida segue a opção de descanso longo.",
+  "GRITTY.Panel.ManualOnly": "Não recupera sozinho — devolva por aqui ou pelo registro.",
+  "GRITTY.Config.Group.AutoRecovery.Label": "Recuperação Automática",
+  "GRITTY.Config.Group.AutoRecovery.Hint": "Se cada tipo de cooldown se resolve sozinho quando o tempo acaba. Desligado, o gasto continua contando, para em 0 e fica na lista até alguém devolver de propósito.",
+  "GRITTY.Settings.AutoRecoverShort.Name": "Recursos de descanso curto recuperam automaticamente",
+  "GRITTY.Settings.AutoRecoverShort.Hint": "",
+  "GRITTY.Settings.AutoRecoverLong.Name": "Recursos de descanso longo recuperam automaticamente",
+  "GRITTY.Settings.AutoRecoverLong.Hint": "",
+  "GRITTY.Settings.AutoRecoverDay.Name": "Recursos diários recuperam automaticamente",
+  "GRITTY.Settings.AutoRecoverDay.Hint": "",
+  "GRITTY.Settings.AutoRecoverHitDice.Name": "Dados de vida recuperam automaticamente",
+  "GRITTY.Settings.AutoRecoverHitDice.Hint": ""
 }

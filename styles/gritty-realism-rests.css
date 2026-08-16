@@ -286,6 +286,17 @@
 .gritty-realism .gritty-group[data-group="hitDice"] { color: #8a5a3c; }
 .gritty-realism .gritty-group[data-group="other"] { color: var(--gritty-muted); }
 
+/* An entry whose group never recovers on its own: a standing debt, not a countdown */
+.gritty-realism .gritty-list li.manual .gritty-remaining {
+  color: var(--gritty-debt);
+  font-weight: 600;
+}
+
+.gritty-realism .gritty-list li.manual .gritty-remaining i {
+  margin-right: 0.15rem;
+  opacity: 0.8;
+}
+
 /* An entry a poor night refuses to advance */
 .gritty-realism .gritty-list li.frozen .gritty-label {
   opacity: 0.65;

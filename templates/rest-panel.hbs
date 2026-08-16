@@ -50,12 +50,16 @@
         <h4>{{localize "GRITTY.Panel.Recovering"}}</h4>
         <ul class="gritty-list gritty-progress">
             {{#each recovering}}
-            <li data-entry-ids="{{this.id}}">
+            <li data-entry-ids="{{this.id}}" class="{{#unless this.automatic}}manual{{/unless}}">
                 {{#if this.img}}<img src="{{this.img}}" alt="" width="18" height="18">{{/if}}
                 <span class="gritty-label" {{#if this.description}}data-tooltip="{{this.description}}"{{/if}}>{{this.label}}</span>
                 {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
                 <span class="gritty-group" data-group="{{this.group}}">{{this.groupLabel}}</span>
-                <span class="gritty-remaining">{{this.rests}}</span>
+                <span class="gritty-remaining">
+                    {{#unless this.automatic}}<i class="fa-solid fa-lock" inert
+                        data-tooltip="{{localize 'GRITTY.Panel.ManualOnly'}}"></i>{{/unless}}
+                    {{this.rests}}
+                </span>
                 {{#if @root.mayAdjust}}
                 <span class="gritty-row-controls">
                     <button type="button" data-gritty-adjust="sooner"

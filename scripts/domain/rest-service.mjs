@@ -2,7 +2,7 @@ import {
   MODULE_ID, ORIGINS, RESOURCE_KINDS, RECOVERY_GROUPS, REST_QUALITIES, SETTINGS,
   periodOfGroup, log, t
 } from "../constants.mjs";
-import { setting, creditedGroups } from "../settings.mjs";
+import { setting, creditedGroups, autoRecoverGroups } from "../settings.mjs";
 import { readState, writeState, queue, canRest, internalContext } from "../data/actor-store.mjs";
 import { registerHandler, execute, hasAuthority } from "../data/authority.mjs";
 import {
@@ -51,19 +51,22 @@ const OP_MUTATE = "mutateState";
 export function previewRest(actor, steps = 1, quality = REST_QUALITIES.full) {
   const base = readState(actor);
   const nextIndex = base.restIndex + Math.max(1, steps);
+  const credited = creditedGroups(quality);
+  const auto = autoRecoverGroups();
 
   // Evaluate against the same held-back state the rest itself will use, so switching the
   // quality in the dialog immediately shows what it costs.
-  const { state } = holdUncredited(base, creditedGroups(quality));
-  const { recovered, pending } = split(state, nextIndex);
+  const { state } = holdUncredited(base, credited, auto);
+  const { recovered, pending } = split(state, nextIndex, auto);
 
   return {
     restIndex: base.restIndex,
     nextIndex,
     quality,
-    recovering: summarizePending(recovered, nextIndex),
-    progressing: summarizePending(pending, nextIndex),
-    held: summarizePending(state.entries, nextIndex).filter(l => !creditedGroups(quality).has(l.group)),
+    recovering: summarizePending(recovered, nextIndex, auto),
+    progressing: summarizePending(pending, nextIndex, auto),
+    held: summarizePending(state.entries, nextIndex, auto)
+      .filter(l => l.automatic && !credited.has(l.group)),
     debt: debt.totalDebt(base)
   };
 }
@@ -75,12 +78,13 @@ export function previewRest(actor, steps = 1, quality = REST_QUALITIES.full) {
  */
 export function getRecoveryState(actor) {
   const state = readState(actor);
-  const { recovered, pending } = split(state, state.restIndex);
+  const auto = autoRecoverGroups();
+  const { recovered, pending } = split(state, state.restIndex, auto);
 
   return {
     restIndex: state.restIndex,
-    ready: summarizePending(recovered, state.restIndex),
-    recovering: summarizePending(pending, state.restIndex),
+    ready: summarizePending(recovered, state.restIndex, auto),
+    recovering: summarizePending(pending, state.restIndex, auto),
     debt: debt.summarizeDebt(state),
     debtTotal: debt.totalDebt(state)
   };
@@ -361,8 +365,9 @@ async function performRest(actor, { restId, advanceTime, chat, quality = REST_QU
   // Hold back what this rest does not credit *before* maturing, so a long-rest cooldown that
   // was due tonight does not slip through on a badly slept night.
   const credited = creditedGroups(quality);
-  const { state: withHeld, held } = holdUncredited(state, credited);
-  const { state: advanced, recovered, pending } = mature(withHeld, newIndex);
+  const auto = autoRecoverGroups();
+  const { state: withHeld, held } = holdUncredited(state, credited, auto);
+  const { state: advanced, recovered, pending } = mature(withHeld, newIndex, auto);
 
   const groups = groupByResource(recovered);
   const { updateData, updateItems, applied } = buildRecoveryUpdates(actor, groups);
@@ -393,7 +398,7 @@ async function performRest(actor, { restId, advanceTime, chat, quality = REST_QU
     quality,
     held,
     recovered: applied,
-    pending: summarizePending(pending, newIndex),
+    pending: summarizePending(pending, newIndex, auto),
     healed: hp.healed,
     clearedDebt: hp.clearedDebt,
     repeated: false
@@ -558,6 +563,41 @@ async function applyMutation(actor, kind, payload) {
       const change = Math.trunc(payload.hitPoints);
       if ( !change ) return { ok: true };
       state = (change < 0) ? debt.incurDebt(state, -change) : debt.payDebt(state, change).state;
+      break;
+    }
+
+    case "syncNativeRest": {
+      // A Short or Long Rest that the world left enabled really did restore things through the
+      // system. Ledger entries for those periods are now stale: leaving them would show a full
+      // resource as still recovering, and would hand it back a second time later.
+      const periods = new Set(payload.periods ?? []);
+      const kept = [];
+      const cleared = [];
+
+      for ( const entry of state.entries ) {
+        if ( periods.has(entry.policy.period) ) cleared.push(entry);
+        else kept.push(entry);
+      }
+
+      // Hit dice come back by the handful rather than all at once, so only drop as many entries
+      // as the system actually returned, oldest first.
+      let dice = Math.max(0, Math.trunc(payload.hitDiceRecovered) || 0);
+      const afterDice = [];
+      for ( const entry of kept ) {
+        if ( (dice > 0) && (entry.resource.kind === RESOURCE_KINDS.hitDice) ) {
+          dice -= entry.amount;
+          cleared.push(entry);
+          continue;
+        }
+        afterDice.push(entry);
+      }
+
+      state = { ...state, entries: afterDice };
+      if ( payload.clearDebt ) state = { ...state, debt: [] };
+
+      if ( !cleared.length && !payload.clearDebt ) return { cleared: 0 };
+      for ( const entry of cleared ) Hooks.callAll("grittyRealism.resourceRecovered", actor, entry);
+      log.debug(`Native ${payload.type} rest cleared ${cleared.length} ledger entr(ies) for ${actor.name}.`);
       break;
     }
 

@@ -44,6 +44,13 @@ export const SETTING_DEFINITIONS = [
   { key: SETTINGS.poorRestHitDice, group: "restQuality", type: Boolean, default: true },
   { key: SETTINGS.poorRestLong, group: "restQuality", type: Boolean, default: false },
 
+  // Whether a group recovers on its own at all. Switched off, an expenditure of that kind still
+  // counts down, reaches zero and stays there until somebody hands it back deliberately.
+  { key: SETTINGS.autoRecoverShort, group: "autoRecovery", type: Boolean, default: true },
+  { key: SETTINGS.autoRecoverLong, group: "autoRecovery", type: Boolean, default: true },
+  { key: SETTINGS.autoRecoverDay, group: "autoRecovery", type: Boolean, default: true },
+  { key: SETTINGS.autoRecoverHitDice, group: "autoRecovery", type: Boolean, default: true },
+
   { key: SETTINGS.restDuration, group: "rest", type: Number, default: 480, range: { min: 0, max: 10080 } },
   { key: SETTINGS.exhaustionDelta, group: "rest", type: Number, default: 0, range: { min: -6, max: 6 } },
   { key: SETTINGS.allowPlayerRest, group: "rest", type: Boolean, default: true },
@@ -81,8 +88,28 @@ export const SETTING_DEFINITIONS = [
 
 /** Order the groups appear in on the configuration screen. */
 export const SETTING_GROUPS = [
-  "cooldowns", "restQuality", "hitPoints", "rest", "tracking", "integration", "advanced"
+  "cooldowns", "autoRecovery", "restQuality", "hitPoints", "rest", "tracking", "integration",
+  "advanced"
 ];
+
+/**
+ * The cooldown groups that are allowed to recover on their own.
+ *
+ * A group left out never matures: its entries count down to zero and sit there, waiting for
+ * someone to hand the resource back deliberately from the sheet or the ledger.
+ *
+ * @returns {Set<string>}
+ */
+export function autoRecoverGroups() {
+  // Hand-made and overridden cooldowns have no natural period and are always automatic — they
+  // were created with an explicit length, so honouring it is the least surprising behaviour.
+  const groups = new Set([RECOVERY_GROUPS.other]);
+  if ( setting(SETTINGS.autoRecoverShort) ) groups.add(RECOVERY_GROUPS.short);
+  if ( setting(SETTINGS.autoRecoverLong) ) groups.add(RECOVERY_GROUPS.long);
+  if ( setting(SETTINGS.autoRecoverDay) ) groups.add(RECOVERY_GROUPS.day);
+  if ( setting(SETTINGS.autoRecoverHitDice) ) groups.add(RECOVERY_GROUPS.hitDice);
+  return groups;
+}
 
 /**
  * The cooldown groups a rest of the given quality advances.
