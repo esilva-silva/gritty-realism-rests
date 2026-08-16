@@ -67,6 +67,14 @@ export const SETTING_DEFINITIONS = [
   { key: SETTINGS.periodRecoversHitDice, group: "period", type: Boolean, default: true },
   { key: SETTINGS.periodRecoversDamage, group: "period", type: Boolean, default: true },
 
+  // Which groups keep their own cadence while the period runs. Short-rest and daily resources
+  // do by default: a night's sleep is a night's sleep, and waiting a whole long-rest period for
+  // a once-per-day item is not what the period was meant to govern.
+  { key: SETTINGS.periodTicksShort, group: "periodTicks", type: Boolean, default: true },
+  { key: SETTINGS.periodTicksDay, group: "periodTicks", type: Boolean, default: true },
+  { key: SETTINGS.periodTicksHitDice, group: "periodTicks", type: Boolean, default: false },
+  { key: SETTINGS.periodTicksLong, group: "periodTicks", type: Boolean, default: false },
+
   { key: SETTINGS.restDuration, group: "rest", type: Number, default: 480, range: { min: 0, max: 10080 } },
   { key: SETTINGS.exhaustionDelta, group: "rest", type: Number, default: 0, range: { min: -6, max: 6 } },
   { key: SETTINGS.allowPlayerRest, group: "rest", type: Boolean, default: true },
@@ -104,8 +112,8 @@ export const SETTING_DEFINITIONS = [
 
 /** Order the groups appear in on the configuration screen. */
 export const SETTING_GROUPS = [
-  "model", "cooldowns", "period", "autoRecovery", "restQuality", "hitPoints", "rest", "tracking",
-  "integration", "advanced"
+  "model", "cooldowns", "period", "periodTicks", "autoRecovery", "restQuality", "hitPoints",
+  "rest", "tracking", "integration", "advanced"
 ];
 
 /**
@@ -125,12 +133,31 @@ export function usesPeriodModel() {
 }
 
 /**
+ * The cooldown groups that keep their own cadence while a long-rest period runs.
+ *
+ * These recover exactly as they would under the ledger model — a short-rest resource returns
+ * one rest after it was spent — while everything outside this set waits for the period to
+ * close. The period governs the long haul; it was never meant to hold a once-per-day item
+ * hostage for a week.
+ *
+ * @returns {Set<string>}
+ */
+export function periodTickGroups() {
+  // Hand-made cooldowns were given an explicit length, so honouring it is the least surprising
+  // behaviour — the same reasoning as everywhere else the "other" group appears.
+  const groups = new Set([RECOVERY_GROUPS.other]);
+  if ( setting(SETTINGS.periodTicksShort) ) groups.add(RECOVERY_GROUPS.short);
+  if ( setting(SETTINGS.periodTicksDay) ) groups.add(RECOVERY_GROUPS.day);
+  if ( setting(SETTINGS.periodTicksHitDice) ) groups.add(RECOVERY_GROUPS.hitDice);
+  if ( setting(SETTINGS.periodTicksLong) ) groups.add(RECOVERY_GROUPS.long);
+  return groups;
+}
+
+/**
  * The cooldown groups a closing long-rest period hands back.
  *
  * Deliberately a separate set from {@link autoRecoverGroups}: those switches pace the ledger
- * model, these decide what the period is worth. A world that has switched every automatic
- * recovery off — because the ledger was never meant to move on its own there — would otherwise
- * find the period model recovering nothing at all.
+ * model, these decide what the period is worth.
  *
  * @returns {Set<string>}
  */

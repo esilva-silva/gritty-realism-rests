@@ -460,6 +460,34 @@ console.log("\n--- Period model: the period is the only clock ---");
   check("a stored period is resized to the new setting", [resized.period.remaining, resized.period.length], [3, 3]);
 }
 
+console.log("\n--- Period model: short and daily keep their own cadence while the period runs ---");
+{
+  // The shipped default: short-rest and daily resources tick as usual; long-rest ones wait.
+  const TICKING = new Set(["short", "day", "other"]);
+
+  let state = blankState();
+  state = tracker.record(state, [spend(state, surge, 1, "Channel Divinity", "sr")]).state;
+  state = tracker.record(state, [spend(state, slot3, 1, "Wand charge", "day")]).state;
+  state = tracker.record(state, [spend(state, slot3, 7, "Spell Slot", "lr")]).state;
+
+  // One rest into the period: the short-rest and daily resources are already back.
+  const after = tracker.mature(state, 1, TICKING);
+  check("a single rest returns the short-rest resource",
+    after.recovered.map(e => e.label).includes("Channel Divinity"), true);
+  check("and the daily one", after.recovered.map(e => e.label).includes("Wand charge"), true);
+  check("while the long-rest slot waits", after.pending.map(e => e.label), ["Spell Slot"]);
+
+  // The waiting entry is shown as not counting down on its own, which is what drives the
+  // hourglass in the sheet rather than a misleading number.
+  const line = tracker.summarizePending(after.pending, 1, TICKING)[0];
+  check("and is flagged as not self-recovering", line.automatic, false);
+
+  // Turning the short-rest tick off puts it back under the period's control.
+  const noTick = tracker.mature(state, 1, new Set(["day", "other"]));
+  check("with the tick off, the short-rest resource waits too",
+    noTick.recovered.map(e => e.label), ["Wand charge"]);
+}
+
 console.log("\n--- Period model: closing hands back only what it covers ---");
 {
   let state = blankState();

@@ -3,7 +3,8 @@ import {
   periodOfGroup, log, t
 } from "../constants.mjs";
 import {
-  setting, creditedGroups, autoRecoverGroups, periodRecoverGroups, recoveryModel, usesPeriodModel
+  setting, creditedGroups, autoRecoverGroups, periodRecoverGroups, periodTickGroups,
+  recoveryModel, usesPeriodModel
 } from "../settings.mjs";
 import { readState, writeState, queue, canRest, internalContext } from "../data/actor-store.mjs";
 import { registerHandler, execute, hasAuthority } from "../data/authority.mjs";
@@ -82,14 +83,14 @@ export function previewRest(actor, steps = 1, quality = REST_QUALITIES.full) {
 }
 
 /**
- * The groups shown as recovering on their own in the interface.
+ * The groups shown as counting down on their own in the interface.
  *
- * Under the period model nothing does, so every row reads as manual — which is the honest
- * picture: the period is the only thing that gives anything back.
+ * Under the period model only the ticking groups do; the rest are waiting on the period and are
+ * drawn as such, which is the honest picture.
  * @returns {Set<string>}
  */
 function displayGroups() {
-  return usesPeriodModel() ? new Set() : autoRecoverGroups();
+  return usesPeriodModel() ? periodTickGroups() : autoRecoverGroups();
 }
 
 /**
@@ -423,21 +424,26 @@ function stepPeriod(state, newIndex, credited) {
   const advances = credited.has(RECOVERY_GROUPS.long);
   const { period, closed } = advancePeriod(state.period, { length, advances });
 
-  const base = { ...state, restIndex: newIndex, period };
+  // Some groups keep their own cadence even while the period runs — a night's sleep still buys
+  // back a short-rest resource. Those behave exactly as they do under the ledger model, poor
+  // nights included; everything else simply waits for the period to close.
+  const ticking = periodTickGroups();
+  const withPeriod = { ...state, period };
+  const { state: withHeld, held } = holdUncredited(withPeriod, credited, ticking);
+  const { state: matured, recovered: ticked, pending } = mature(withHeld, newIndex, ticking);
 
-  // Nothing matures on its own under this model, so an unfinished period recovers nothing at all.
   if ( !closed ) {
-    return {
-      advanced: base,
-      recovered: [],
-      pending: base.entries,
-      held: advances ? 0 : base.entries.length,
-      periodClosed: false
-    };
+    return { advanced: matured, recovered: ticked, pending, held, periodClosed: false };
   }
 
-  const { state: flushed, recovered } = flushGroups(base, periodRecoverGroups());
-  return { advanced: flushed, recovered, pending: flushed.entries, held: 0, periodClosed: true };
+  const { state: flushed, recovered: released } = flushGroups(matured, periodRecoverGroups());
+  return {
+    advanced: flushed,
+    recovered: [...ticked, ...released],
+    pending: flushed.entries,
+    held,
+    periodClosed: true
+  };
 }
 
 /**

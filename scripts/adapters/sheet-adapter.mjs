@@ -248,13 +248,14 @@ function renderDisplay(actor) {
         ...line,
         showAmount: line.amount > 1,
         groupLabel: t(`Group.${line.group}`),
-        // Under the period model an individual countdown would be a lie — the period is the
-        // only clock — so the row shows no number at all. Otherwise a group with automatic
-        // recovery switched off shows its bare count: a standing debt, not a countdown.
-        rests: state.period ? ""
-          : !line.automatic ? String(line.remaining)
-            : (line.remaining === 1) ? t("Rest.OneRestRemaining")
-              : t("Rest.RestsRemaining", { count: line.remaining })
+        // `automatic` means the entry is running a clock of its own — under either model. What
+        // it means when it is false differs: under the period model the entry is waiting on the
+        // period, whereas on the ledger it is a standing debt nothing will clear but a hand.
+        waitsForPeriod: !!state.period && !line.automatic,
+        rests: line.automatic
+          ? ((line.remaining === 1) ? t("Rest.OneRestRemaining")
+            : t("Rest.RestsRemaining", { count: line.remaining }))
+          : (state.period ? t("Period.Waiting") : String(line.remaining))
       })),
       debt: state.debt,
       debtTotal: state.debtTotal,

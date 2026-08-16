@@ -72,8 +72,15 @@
                 {{#if this.showAmount}}<span class="gritty-amount">&times;{{this.amount}}</span>{{/if}}
                 <span class="gritty-group" data-group="{{this.group}}">{{this.groupLabel}}</span>
                 <span class="gritty-remaining">
-                    {{#unless this.automatic}}<i class="fa-solid fa-lock" inert
-                        data-tooltip="{{localize 'GRITTY.Panel.ManualOnly'}}"></i>{{/unless}}
+                    {{#unless this.automatic}}
+                    {{#if this.waitsForPeriod}}
+                    <i class="fa-solid fa-hourglass-half" inert
+                       data-tooltip="{{localize 'GRITTY.Period.WaitingHint'}}"></i>
+                    {{else}}
+                    <i class="fa-solid fa-lock" inert
+                       data-tooltip="{{localize 'GRITTY.Panel.ManualOnly'}}"></i>
+                    {{/if}}
+                    {{/unless}}
                     {{this.rests}}
                 </span>
                 {{#if @root.mayAdjust}}

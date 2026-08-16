@@ -62,6 +62,10 @@ export const SETTINGS = {
   periodRecoversDay: "periodRecoversDay",
   periodRecoversHitDice: "periodRecoversHitDice",
   periodRecoversDamage: "periodRecoversDamage",
+  periodTicksShort: "periodTicksShort",
+  periodTicksLong: "periodTicksLong",
+  periodTicksDay: "periodTicksDay",
+  periodTicksHitDice: "periodTicksHitDice",
   logLevel: "logLevel"
 };
 

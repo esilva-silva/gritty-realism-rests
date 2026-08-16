@@ -95,9 +95,20 @@ Rest 2   long rest 5/7   nothing returns
 Rest 7   long rest 0/7   →  everything returns, next period opens at 7/7
 ```
 
-Which groups a closing period hands back is configurable, as is whether it heals damage. A poor
-night never counts towards the period, using the same switch the other model uses — a week of
-broken sleep never completes a long rest.
+Not everything waits, though. Short-rest and daily resources keep their own cadence *while* the
+period runs — a night's sleep still buys back a Channel Divinity, and a once-per-day item is not
+held hostage for a week. Which groups tick during the period, and which are the period's to
+give, are configured separately:
+
+| | Ticks during the period | Returned when it closes |
+| --- | --- | --- |
+| Short rest | yes | yes |
+| Daily | yes | yes |
+| Hit dice | no | yes |
+| Long rest | no | yes |
+
+A poor night never counts towards the period, using the same switch the other model uses — a
+week of broken sleep never completes a long rest.
 
 Switching between the models is safe in both directions: expenditures keep their individual
 timers while the period model runs, so going back to cooldowns resumes them exactly where they

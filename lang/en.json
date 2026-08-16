@@ -225,5 +225,17 @@
   "GRITTY.Settings.PeriodRecoversHitDice.Name": "A closing period returns hit dice",
   "GRITTY.Settings.PeriodRecoversHitDice.Hint": "",
   "GRITTY.Settings.PeriodRecoversDamage.Name": "A closing period heals damage taken",
-  "GRITTY.Settings.PeriodRecoversDamage.Hint": "Clears every outstanding wound and refills hit points."
+  "GRITTY.Settings.PeriodRecoversDamage.Hint": "Clears every outstanding wound and refills hit points.",
+  "GRITTY.Period.Waiting": "with the long rest",
+  "GRITTY.Period.WaitingHint": "Returns when the long rest period closes.",
+  "GRITTY.Config.Group.PeriodTicks.Label": "During the Period",
+  "GRITTY.Config.Group.PeriodTicks.Hint": "Which resources keep their own cadence while a long rest period runs. A ticked group recovers on its normal cooldown — a short-rest resource one rest after it was spent. Everything unticked waits for the period to close.",
+  "GRITTY.Settings.PeriodTicksShort.Name": "Short-rest resources recover each rest",
+  "GRITTY.Settings.PeriodTicksShort.Hint": "",
+  "GRITTY.Settings.PeriodTicksDay.Name": "Daily resources recover on their own cooldown",
+  "GRITTY.Settings.PeriodTicksDay.Hint": "",
+  "GRITTY.Settings.PeriodTicksHitDice.Name": "Hit dice recover on their own cooldown",
+  "GRITTY.Settings.PeriodTicksHitDice.Hint": "Off by default: hit dice usually outlast a period, so the period returns them.",
+  "GRITTY.Settings.PeriodTicksLong.Name": "Long-rest resources recover on their own cooldown",
+  "GRITTY.Settings.PeriodTicksLong.Hint": "Off by default — these are what the period exists to govern."
 }

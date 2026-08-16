@@ -225,5 +225,17 @@
   "GRITTY.Settings.PeriodRecoversHitDice.Name": "O fim do período devolve dados de vida",
   "GRITTY.Settings.PeriodRecoversHitDice.Hint": "",
   "GRITTY.Settings.PeriodRecoversDamage.Name": "O fim do período cura o dano sofrido",
-  "GRITTY.Settings.PeriodRecoversDamage.Hint": "Zera todos os ferimentos pendentes e enche os pontos de vida."
+  "GRITTY.Settings.PeriodRecoversDamage.Hint": "Zera todos os ferimentos pendentes e enche os pontos de vida.",
+  "GRITTY.Period.Waiting": "com o descanso longo",
+  "GRITTY.Period.WaitingHint": "Volta quando o período de descanso longo fechar.",
+  "GRITTY.Config.Group.PeriodTicks.Label": "Durante o Período",
+  "GRITTY.Config.Group.PeriodTicks.Hint": "Quais recursos mantêm o ritmo próprio enquanto o período de descanso longo corre. Um grupo marcado recupera pelo cooldown normal — um recurso de descanso curto volta um rest depois de gasto. Tudo desmarcado espera o período fechar.",
+  "GRITTY.Settings.PeriodTicksShort.Name": "Recursos de descanso curto voltam a cada rest",
+  "GRITTY.Settings.PeriodTicksShort.Hint": "",
+  "GRITTY.Settings.PeriodTicksDay.Name": "Recursos diários voltam pelo cooldown próprio",
+  "GRITTY.Settings.PeriodTicksDay.Hint": "",
+  "GRITTY.Settings.PeriodTicksHitDice.Name": "Dados de vida voltam pelo cooldown próprio",
+  "GRITTY.Settings.PeriodTicksHitDice.Hint": "Desligado por padrão: dados de vida costumam durar mais que um período, então é o período que os devolve.",
+  "GRITTY.Settings.PeriodTicksLong.Name": "Recursos de descanso longo voltam pelo cooldown próprio",
+  "GRITTY.Settings.PeriodTicksLong.Hint": "Desligado por padrão — são justamente estes que o período existe para governar."
 }
