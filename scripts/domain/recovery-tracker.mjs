@@ -1,4 +1,4 @@
-import { log, groupOfPeriod } from "../constants.mjs";
+import { log, groupOfPeriod, RESOURCE_KINDS } from "../constants.mjs";
 import { resourceAddress } from "./models.mjs";
 
 /**
@@ -212,7 +212,80 @@ export function holdUncredited(state, creditedGroups, autoGroups = null) {
 }
 
 /**
- * Move a set of entries' maturity by a number of rests, never earlier than the current index.
+ * Take back everything in the given groups at once, whatever their individual timers say.
+ *
+ * This is how a long-rest period closes: the period, not the entry, is the clock, so an entry's
+ * `recoverAtRestIndex` is beside the point here.
+ *
+ * @param {import("./models.mjs").RestState} state
+ * @param {Set<string>} groups  Groups the period hands back, from `RECOVERY_GROUPS`.
+ * @returns {{
+ *   state: import("./models.mjs").RestState,
+ *   recovered: import("./models.mjs").RecoveryEntry[]
+ * }}
+ */
+/**
+ * Advance a rolling long-rest period by one rest.
+ *
+ * Kept free of settings and documents so the arithmetic — opening, counting down, closing and
+ * immediately reopening — can be reasoned about and tested on its own.
+ *
+ * @param {{remaining: number, length: number}|null} period  Current period, or `null` if none.
+ * @param {object} options
+ * @param {number} options.length     Configured period length.
+ * @param {boolean} options.advances  Whether this night counts towards the long rest.
+ * @returns {{period: {remaining: number, length: number}, closed: boolean}}
+ */
+export function advancePeriod(period, { length, advances }) {
+  // Open one on the first rest, and resize a stored period whose length no longer matches the
+  // configured one — otherwise changing the setting would never take effect on existing actors.
+  let current = period ?? { remaining: length, length };
+  if ( current.length !== length ) {
+    current = { length, remaining: Math.min(current.remaining, length) };
+  }
+
+  if ( !advances ) return { period: current, closed: false };
+
+  const remaining = Math.max(0, current.remaining - 1);
+  if ( remaining > 0 ) return { period: { ...current, remaining }, closed: false };
+
+  // Reaching zero closes the period and opens the next one in the same breath, so there is
+  // never a rest that belongs to no period at all.
+  return { period: { length, remaining: length }, closed: true };
+}
+
+/**
+ * Take back everything in the given groups at once, whatever their individual timers say.
+ *
+ * This is how a long-rest period closes: the period, not the entry, is the clock, so an entry's
+ * `recoverAtRestIndex` is beside the point here.
+ *
+ * @param {import("./models.mjs").RestState} state
+ * @param {Set<string>} groups  Groups the period hands back, from `RECOVERY_GROUPS`.
+ * @returns {{
+ *   state: import("./models.mjs").RestState,
+ *   recovered: import("./models.mjs").RecoveryEntry[]
+ * }}
+ */
+export function flushGroups(state, groups) {
+  const recovered = [];
+  const kept = [];
+
+  for ( const entry of state.entries ) {
+    // Free-standing notes are never included: they stand for a condition rather than a system
+    // resource, so a closing period restored nothing about them. Same reasoning as the native
+    // rest reconciliation.
+    const isNote = entry.resource.kind === RESOURCE_KINDS.note;
+    if ( !isNote && groups.has(groupOfPeriod(entry.policy.period)) ) recovered.push(entry);
+    else kept.push(entry);
+  }
+
+  if ( !recovered.length ) return { state, recovered };
+  return { state: { ...state, entries: kept }, recovered };
+}
+
+/**
+ * Move a set of entries' maturity by a number of rests, never earlier than the current rest.
  * @param {import("./models.mjs").RestState} state
  * @param {string[]} entryIds
  * @param {number} delta  Rests to add; negative brings recovery closer.

@@ -25,6 +25,27 @@
         </div>
     </section>
 
+    {{#if periodModel}}
+    <section class="gritty-section gritty-period">
+        <h3>{{localize "GRITTY.Period.Label"}}</h3>
+        <div class="gritty-period-row">
+            <i class="fa-solid fa-hourglass-half" inert></i>
+            {{#if periodClosing}}
+            <span class="gritty-period-closing">{{localize "GRITTY.Period.Closing"}}</span>
+            {{else if periodStalls}}
+            <span class="gritty-period-stalled">
+                <i class="fa-solid fa-snowflake" inert></i>
+                {{localize "GRITTY.Period.Stalled" count=periodFrom}}
+            </span>
+            {{else}}
+            <span class="gritty-period-count">
+                {{localize "GRITTY.Period.Progress" from=periodFrom to=periodTo length=preview.period.length}}
+            </span>
+            {{/if}}
+        </div>
+    </section>
+    {{/if}}
+
     <section class="gritty-section">
         <h3>{{localize "GRITTY.Rest.WillRecover"}}</h3>
         {{#if hasRecovering}}

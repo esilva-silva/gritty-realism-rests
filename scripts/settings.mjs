@@ -1,5 +1,6 @@
 import {
-  MODULE_ID, SETTINGS, HP_MODES, DEBT_ORDERS, SHEET_PLACEMENTS, RECOVERY_GROUPS, REST_QUALITIES
+  MODULE_ID, SETTINGS, HP_MODES, DEBT_ORDERS, SHEET_PLACEMENTS, RECOVERY_GROUPS, REST_QUALITIES,
+  RECOVERY_MODELS
 } from "./constants.mjs";
 
 /**
@@ -52,6 +53,20 @@ export const SETTING_DEFINITIONS = [
   { key: SETTINGS.autoRecoverHitDice, group: "autoRecovery", type: Boolean, default: true },
   { key: SETTINGS.autoRecoverDamage, group: "autoRecovery", type: Boolean, default: true },
 
+  {
+    key: SETTINGS.recoveryModel, group: "model", type: String, default: RECOVERY_MODELS.ledger,
+    choices: {
+      [RECOVERY_MODELS.ledger]: "GRITTY.Settings.RecoveryModel.Ledger",
+      [RECOVERY_MODELS.period]: "GRITTY.Settings.RecoveryModel.Period"
+    }
+  },
+  { key: SETTINGS.periodLength, group: "period", type: Number, default: 7, range: { min: 1, max: 60 } },
+  { key: SETTINGS.periodRecoversShort, group: "period", type: Boolean, default: true },
+  { key: SETTINGS.periodRecoversLong, group: "period", type: Boolean, default: true },
+  { key: SETTINGS.periodRecoversDay, group: "period", type: Boolean, default: true },
+  { key: SETTINGS.periodRecoversHitDice, group: "period", type: Boolean, default: true },
+  { key: SETTINGS.periodRecoversDamage, group: "period", type: Boolean, default: true },
+
   { key: SETTINGS.restDuration, group: "rest", type: Number, default: 480, range: { min: 0, max: 10080 } },
   { key: SETTINGS.exhaustionDelta, group: "rest", type: Number, default: 0, range: { min: -6, max: 6 } },
   { key: SETTINGS.allowPlayerRest, group: "rest", type: Boolean, default: true },
@@ -89,9 +104,44 @@ export const SETTING_DEFINITIONS = [
 
 /** Order the groups appear in on the configuration screen. */
 export const SETTING_GROUPS = [
-  "cooldowns", "autoRecovery", "restQuality", "hitPoints", "rest", "tracking", "integration",
-  "advanced"
+  "model", "cooldowns", "period", "autoRecovery", "restQuality", "hitPoints", "rest", "tracking",
+  "integration", "advanced"
 ];
+
+/**
+ * Which recovery model the world runs.
+ * @returns {string}  One of {@link RECOVERY_MODELS}.
+ */
+export function recoveryModel() {
+  return setting(SETTINGS.recoveryModel);
+}
+
+/**
+ * Is the world on the rolling long-rest period rather than per-expenditure cooldowns?
+ * @returns {boolean}
+ */
+export function usesPeriodModel() {
+  return recoveryModel() === RECOVERY_MODELS.period;
+}
+
+/**
+ * The cooldown groups a closing long-rest period hands back.
+ *
+ * Deliberately a separate set from {@link autoRecoverGroups}: those switches pace the ledger
+ * model, these decide what the period is worth. A world that has switched every automatic
+ * recovery off — because the ledger was never meant to move on its own there — would otherwise
+ * find the period model recovering nothing at all.
+ *
+ * @returns {Set<string>}
+ */
+export function periodRecoverGroups() {
+  const groups = new Set([RECOVERY_GROUPS.other]);
+  if ( setting(SETTINGS.periodRecoversShort) ) groups.add(RECOVERY_GROUPS.short);
+  if ( setting(SETTINGS.periodRecoversLong) ) groups.add(RECOVERY_GROUPS.long);
+  if ( setting(SETTINGS.periodRecoversDay) ) groups.add(RECOVERY_GROUPS.day);
+  if ( setting(SETTINGS.periodRecoversHitDice) ) groups.add(RECOVERY_GROUPS.hitDice);
+  return groups;
+}
 
 /**
  * The cooldown groups that are allowed to recover on their own.

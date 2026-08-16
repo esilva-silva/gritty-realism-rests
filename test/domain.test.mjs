@@ -28,6 +28,9 @@ const SETTINGS_VALUES = {
   logLevel: "off"
 };
 
+// Foundry adds this to Math; the domain layer is entitled to rely on it.
+Math.clamp ??= (n, min, max) => Math.min(Math.max(n, min), max);
+
 globalThis.game = {
   time: { worldTime: 0 },
   settings: { get: (_mod, key) => SETTINGS_VALUES[key] },
@@ -426,6 +429,125 @@ console.log("\n--- A native rest clears real resources but never a hand-made not
   check("a long rest clears both real resources", afterLong.map(e => e.label), ["Cracked ribs"]);
   check("but the note survives, despite sharing the long-rest period",
     afterLong[0].resource.kind, "note");
+}
+
+console.log("\n--- Period model: the period is the only clock ---");
+{
+  const ALL = new Set(["short", "long", "day", "hitDice", "other"]);
+  const L = 3;
+
+  // 1. The first rest opens a period and already spends one night of it.
+  let p = tracker.advancePeriod(null, { length: L, advances: true });
+  check("opens at length and counts the opening rest", [p.period.remaining, p.period.length], [2, 3]);
+  check("and does not close on the way in", p.closed, false);
+
+  // 2. It counts down, and only the last rest closes it.
+  p = tracker.advancePeriod(p.period, { length: L, advances: true });
+  check("second rest leaves 1", p.period.remaining, 1);
+  check("still open", p.closed, false);
+
+  p = tracker.advancePeriod(p.period, { length: L, advances: true });
+  check("third rest closes it", p.closed, true);
+  check("and the next period is already open at full length", p.period.remaining, 3);
+
+  // 3. A poor night passes time without advancing the long rest.
+  const held = tracker.advancePeriod({ remaining: 2, length: L }, { length: L, advances: false });
+  check("a poor night does not count", held.period.remaining, 2);
+  check("and cannot close the period", held.closed, false);
+
+  // 4. Changing the configured length resizes an oversized stored period.
+  const resized = tracker.advancePeriod({ remaining: 9, length: 9 }, { length: L, advances: false });
+  check("a stored period is resized to the new setting", [resized.period.remaining, resized.period.length], [3, 3]);
+}
+
+console.log("\n--- Period model: closing hands back only what it covers ---");
+{
+  let state = blankState();
+  state = tracker.record(state, [spend(state, slot3, 7, "Spell Slot", "lr")]).state;
+  state = tracker.record(state, [spend(state, surge, 1, "Channel Divinity", "sr")]).state;
+  state = tracker.record(state, [makeEntry({
+    resource: { kind: "note", keyPath: "", key: "n1" },
+    amount: 1, policy: { period: "lr", restCount: 3, source: "manual" },
+    restIndex: 0, label: "Cracked ribs"
+  })]).state;
+
+  const everything = tracker.flushGroups(state, new Set(["short", "long", "day", "hitDice", "other"]));
+  check("both real resources come back", everything.recovered.map(e => e.label).sort(),
+    ["Channel Divinity", "Spell Slot"]);
+  check("the hand-made note is left alone", everything.state.entries.map(e => e.label), ["Cracked ribs"]);
+
+  // A group the period does not cover survives untouched.
+  const noLong = tracker.flushGroups(state, new Set(["short", "day", "hitDice", "other"]));
+  check("an uncovered group is not returned", noLong.recovered.map(e => e.label), ["Channel Divinity"]);
+  check("and stays in the list", noLong.state.entries.map(e => e.label).sort(),
+    ["Cracked ribs", "Spell Slot"]);
+
+  // Timers are irrelevant here: a slot due far in the future still comes back.
+  check("maturity is beside the point", everything.recovered.every(e => e.recoverAtRestIndex > 0), true);
+}
+
+console.log("\n--- Period model: closing settles every wound at once ---");
+{
+  const actor = { system: { attributes: { hp: { value: 12, max: 40, effectiveMax: 40 } } } };
+  let state = blankState();
+  state = debt.incurDebt(state, 10);
+  state = { ...state, restIndex: 2 };
+  state = debt.incurDebt(state, 15);
+
+  check("two wounds are owed", debt.totalDebt(state), 25);
+  const cleared = debt.clearAll(actor, state);
+  check("all of it clears at once", cleared.clearedDebt, 25);
+  check("hit points come back", cleared.updateData, { "system.attributes.hp.value": 37 });
+  check("and nothing is left owed", debt.totalDebt(cleared.state), 0);
+
+  // clearAll is the deliberate act of closing a period, so it ignores the "time does not heal"
+  // switch that processRest honours.
+  SETTINGS_VALUES.autoRecoverDamage = false;
+  check("it ignores the automatic-recovery switch", debt.clearAll(actor, state).clearedDebt, 25);
+  check("while processRest still refuses", debt.processRest(actor, state, 99).healed, 0);
+  SETTINGS_VALUES.autoRecoverDamage = true;
+
+  // Healing capped at max, not overshooting.
+  const nearlyFull = { system: { attributes: { hp: { value: 38, max: 40, effectiveMax: 40 } } } };
+  check("healing is clamped to the maximum",
+    debt.clearAll(nearlyFull, state).updateData, { "system.attributes.hp.value": 40 });
+}
+
+console.log("\n--- Period model: state round-trips, and old states are untouched ---");
+{
+  // A state written before the period model existed must normalize to "no period".
+  const legacy = normalizeState({ restIndex: 4, entries: [], debt: [] });
+  check("an old state has no period", legacy.period, null);
+
+  const live = normalizeState({ restIndex: 4, entries: [], debt: [], period: { remaining: 2, length: 7 } });
+  check("a period round-trips", [live.period.remaining, live.period.length], [2, 7]);
+
+  const tampered = normalizeState({ period: { remaining: 99, length: 7 } });
+  check("a hand-edited remaining is clamped to the length", tampered.period.remaining, 7);
+
+  const negative = normalizeState({ period: { remaining: -5, length: 7 } });
+  check("and never goes below zero", negative.period.remaining, 0);
+
+  check("garbage is treated as no period", normalizeState({ period: "nope" }).period, null);
+}
+
+console.log("\n--- Switching back to the ledger model resumes the old timers ---");
+{
+  // Entries keep their recoverAtRestIndex while the period model runs, which is what lets a
+  // world switch back without losing where every expenditure stood.
+  const ALL = new Set(["short", "long", "day", "hitDice", "other"]);
+  let state = blankState();
+  state = tracker.record(state, [spend(state, slot3, 7, "Spell Slot", "lr")]).state;
+  check("the timer was recorded at spend time", state.entries[0].recoverAtRestIndex, 7);
+
+  // Three rests pass under the period model: nothing matures, timers untouched.
+  state = { ...state, restIndex: 3, period: { remaining: 1, length: 3 } };
+  check("still pending after three period rests", tracker.mature(state, 3, new Set()).recovered.length, 0);
+  check("and its maturity never moved", state.entries[0].recoverAtRestIndex, 7);
+
+  // Back on the ledger model it matures exactly when it always would have.
+  check("nothing at rest 6", tracker.mature(state, 6, ALL).recovered.length, 0);
+  check("and it returns at rest 7", tracker.mature(state, 7, ALL).recovered.map(e => e.label), ["Spell Slot"]);
 }
 
 console.log("\n--- normalizeState discards malformed entries ---");

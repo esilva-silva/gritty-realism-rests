@@ -25,6 +25,22 @@
 
 <div class="gritty-panel-body">
 
+    {{#if periodModel}}
+    <section class="gritty-period">
+        <div class="gritty-period-row">
+            <i class="fa-solid fa-hourglass-half" inert></i>
+            <span class="gritty-period-label">{{localize "GRITTY.Period.Label"}}</span>
+            <span class="gritty-period-count">{{period.remaining}} / {{period.length}}</span>
+        </div>
+        <div class="gritty-period-track" role="presentation">
+            {{#each periodPips}}
+            <span class="gritty-period-pip {{#if this.spent}}spent{{/if}}"></span>
+            {{/each}}
+        </div>
+        <p class="gritty-hint">{{localize "GRITTY.Period.Hint" count=period.remaining}}</p>
+    </section>
+    {{/if}}
+
     {{#if isEmpty}}
     <p class="gritty-empty">{{localize "GRITTY.Panel.Empty"}}</p>
     {{/if}}

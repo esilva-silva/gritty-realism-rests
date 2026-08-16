@@ -1,9 +1,11 @@
-import { MODULE_ID, REST_TYPE, SETTINGS, REST_QUALITIES, RECOVERY_GROUPS } from "./constants.mjs";
+import {
+  MODULE_ID, REST_TYPE, SETTINGS, REST_QUALITIES, RECOVERY_GROUPS, RECOVERY_MODELS
+} from "./constants.mjs";
 import { promptNewEntry, promptItemCooldown } from "./ui/entry-dialog.mjs";
 import { setting } from "./settings.mjs";
 import {
   takeRest, advanceRests, partyRest, previewRest,
-  getRecoveryState, getPendingRecoveries, canTakeRest, mutate
+  getRecoveryState, getPendingRecoveries, canTakeRest, mutate, getPeriod
 } from "./domain/rest-service.mjs";
 import { registerRule, unregisterRule, costOf } from "./domain/recovery-rules.mjs";
 import { readState, clearState } from "./data/actor-store.mjs";
@@ -156,8 +158,18 @@ export const api = {
   /** Setting keys, for use with {@link api.setting}. */
   SETTINGS,
 
+  /**
+   * The current long-rest period, or `null` when the world is on the ledger model.
+   * @param {Actor} actor
+   * @returns {{remaining: number, length: number}|null}
+   */
+  getPeriod,
+
   /** Rest qualities accepted by {@link api.takeRest}. */
   REST_QUALITIES,
+
+  /** Recovery models the world can run. */
+  RECOVERY_MODELS,
 
   /** Cooldown groups a rest quality can credit or hold back. */
   RECOVERY_GROUPS,

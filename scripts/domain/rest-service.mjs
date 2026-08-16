@@ -2,12 +2,14 @@ import {
   MODULE_ID, ORIGINS, RESOURCE_KINDS, RECOVERY_GROUPS, REST_QUALITIES, SETTINGS,
   periodOfGroup, log, t
 } from "../constants.mjs";
-import { setting, creditedGroups, autoRecoverGroups } from "../settings.mjs";
+import {
+  setting, creditedGroups, autoRecoverGroups, periodRecoverGroups, recoveryModel, usesPeriodModel
+} from "../settings.mjs";
 import { readState, writeState, queue, canRest, internalContext } from "../data/actor-store.mjs";
 import { registerHandler, execute, hasAuthority } from "../data/authority.mjs";
 import {
   mature, split, groupByResource, summarizePending, record, reconcile, remove, reschedule, shift,
-  holdUncredited
+  holdUncredited, flushGroups, advancePeriod
 } from "./recovery-tracker.mjs";
 import { resolvePolicy, costOf } from "./recovery-rules.mjs";
 import { makeEntry, blankState } from "./models.mjs";
@@ -52,23 +54,42 @@ export function previewRest(actor, steps = 1, quality = REST_QUALITIES.full) {
   const base = readState(actor);
   const nextIndex = base.restIndex + Math.max(1, steps);
   const credited = creditedGroups(quality);
-  const auto = autoRecoverGroups();
 
-  // Evaluate against the same held-back state the rest itself will use, so switching the
-  // quality in the dialog immediately shows what it costs.
-  const { state } = holdUncredited(base, credited, auto);
-  const { recovered, pending } = split(state, nextIndex, auto);
+  // The preview runs the very same step the rest will run, so what the dialog promises and what
+  // happens can never drift apart.
+  const step = usesPeriodModel()
+    ? stepPeriod(base, nextIndex, credited)
+    : stepLedger(base, nextIndex, credited);
+
+  const groups = displayGroups();
 
   return {
     restIndex: base.restIndex,
     nextIndex,
     quality,
-    recovering: summarizePending(recovered, nextIndex, auto),
-    progressing: summarizePending(pending, nextIndex, auto),
-    held: summarizePending(state.entries, nextIndex, auto)
-      .filter(l => l.automatic && !credited.has(l.group)),
+    model: recoveryModel(),
+    period: step.advanced.period,
+    periodBefore: base.period?.remaining ?? (usesPeriodModel() ? setting(SETTINGS.periodLength) : null),
+    periodClosed: step.periodClosed,
+    recovering: summarizePending(step.recovered, nextIndex, groups),
+    progressing: summarizePending(step.pending, nextIndex, groups),
+    held: usesPeriodModel()
+      ? (step.held ? summarizePending(step.pending, nextIndex, groups) : [])
+      : summarizePending(step.advanced.entries, nextIndex, groups)
+        .filter(l => l.automatic && !credited.has(l.group)),
     debt: debt.totalDebt(base)
   };
+}
+
+/**
+ * The groups shown as recovering on their own in the interface.
+ *
+ * Under the period model nothing does, so every row reads as manual — which is the honest
+ * picture: the period is the only thing that gives anything back.
+ * @returns {Set<string>}
+ */
+function displayGroups() {
+  return usesPeriodModel() ? new Set() : autoRecoverGroups();
 }
 
 /**
@@ -78,16 +99,30 @@ export function previewRest(actor, steps = 1, quality = REST_QUALITIES.full) {
  */
 export function getRecoveryState(actor) {
   const state = readState(actor);
-  const auto = autoRecoverGroups();
-  const { recovered, pending } = split(state, state.restIndex, auto);
+  const groups = displayGroups();
+  const { recovered, pending } = split(state, state.restIndex, groups);
 
   return {
     restIndex: state.restIndex,
-    ready: summarizePending(recovered, state.restIndex, auto),
-    recovering: summarizePending(pending, state.restIndex, auto),
+    model: recoveryModel(),
+    // Materialize the period lazily so the panel can show it before the first rest opens one.
+    period: usesPeriodModel()
+      ? (state.period ?? { remaining: setting(SETTINGS.periodLength), length: setting(SETTINGS.periodLength) })
+      : null,
+    ready: summarizePending(recovered, state.restIndex, groups),
+    recovering: summarizePending(pending, state.restIndex, groups),
     debt: debt.summarizeDebt(state),
     debtTotal: debt.totalDebt(state)
   };
+}
+
+/**
+ * The current long-rest period, or `null` outside the period model.
+ * @param {Actor} actor
+ * @returns {{remaining: number, length: number}|null}
+ */
+export function getPeriod(actor) {
+  return getRecoveryState(actor).period;
 }
 
 /**
@@ -344,6 +379,94 @@ async function withActor(actorUuid, fn) {
 }
 
 /**
+ * @typedef {object} RestStep
+ * @property {import("./models.mjs").RestState} advanced  State with the rest applied.
+ * @property {import("./models.mjs").RecoveryEntry[]} recovered
+ * @property {import("./models.mjs").RecoveryEntry[]} pending
+ * @property {number} held           Entries a poor night refused to advance.
+ * @property {boolean} periodClosed  Whether a long-rest period completed with this rest.
+ */
+
+/**
+ * Advance one rest under the ledger model: every expenditure runs its own clock.
+ *
+ * @param {import("./models.mjs").RestState} state
+ * @param {number} newIndex
+ * @param {Set<string>} credited  Groups this night's quality credits.
+ * @returns {RestStep}
+ */
+function stepLedger(state, newIndex, credited) {
+  // Hold back what this rest does not credit *before* maturing, so a long-rest cooldown that
+  // was due tonight does not slip through on a badly slept night.
+  const auto = autoRecoverGroups();
+  const { state: withHeld, held } = holdUncredited(state, credited, auto);
+  const { state: advanced, recovered, pending } = mature(withHeld, newIndex, auto);
+
+  return { advanced, recovered, pending, held, periodClosed: false };
+}
+
+/**
+ * Advance one rest under the period model: nothing runs its own clock, and the long-rest period
+ * is the only thing that gives anything back.
+ *
+ * The period only counts down on a night that credits long-rest recovery, so a week of broken
+ * sleep never completes one — the same `poorRestLong` switch that governs the ledger model
+ * decides this, rather than a second setting saying the same thing twice.
+ *
+ * @param {import("./models.mjs").RestState} state
+ * @param {number} newIndex
+ * @param {Set<string>} credited
+ * @returns {RestStep}
+ */
+function stepPeriod(state, newIndex, credited) {
+  const length = Math.max(1, setting(SETTINGS.periodLength));
+  const advances = credited.has(RECOVERY_GROUPS.long);
+  const { period, closed } = advancePeriod(state.period, { length, advances });
+
+  const base = { ...state, restIndex: newIndex, period };
+
+  // Nothing matures on its own under this model, so an unfinished period recovers nothing at all.
+  if ( !closed ) {
+    return {
+      advanced: base,
+      recovered: [],
+      pending: base.entries,
+      held: advances ? 0 : base.entries.length,
+      periodClosed: false
+    };
+  }
+
+  const { state: flushed, recovered } = flushGroups(base, periodRecoverGroups());
+  return { advanced: flushed, recovered, pending: flushed.entries, held: 0, periodClosed: true };
+}
+
+/**
+ * Work out the hit point change for this rest under whichever model is running.
+ *
+ * @param {Actor} actor
+ * @param {import("./models.mjs").RestState} state
+ * @param {number} newIndex
+ * @param {object} options
+ * @param {Set<string>} options.credited
+ * @param {boolean} options.periodClosed
+ * @returns {{state: object, updateData: object, healed: number, clearedDebt: number}}
+ */
+function resolveHitPoints(actor, state, newIndex, { credited, periodClosed }) {
+  if ( !usesPeriodModel() ) {
+    // Hit point debt follows the long-rest schedule, so a rest that does not credit long-rest
+    // cooldowns does not let wounds close either.
+    const beforeHp = credited.has(RECOVERY_GROUPS.long) ? state : debt.holdDebt(state);
+    return debt.processRest(actor, beforeHp, newIndex);
+  }
+
+  // Under the period model wounds close when the period does, and only if it covers damage.
+  if ( !periodClosed || !setting(SETTINGS.periodRecoversDamage) ) {
+    return { state, updateData: {}, healed: 0, clearedDebt: 0 };
+  }
+  return debt.clearAll(actor, state);
+}
+
+/**
  * The authoritative rest. Runs on one client, inside the actor's queue.
  *
  * @param {Actor} actor
@@ -361,21 +484,18 @@ async function performRest(actor, { restId, advanceTime, chat, quality = REST_QU
   }
 
   const newIndex = state.restIndex + 1;
-
-  // Hold back what this rest does not credit *before* maturing, so a long-rest cooldown that
-  // was due tonight does not slip through on a badly slept night.
   const credited = creditedGroups(quality);
-  const auto = autoRecoverGroups();
-  const { state: withHeld, held } = holdUncredited(state, credited, auto);
-  const { state: advanced, recovered, pending } = mature(withHeld, newIndex, auto);
+
+  const stepped = usesPeriodModel()
+    ? stepPeriod(state, newIndex, credited)
+    : stepLedger(state, newIndex, credited);
+
+  const { advanced, recovered, pending, held, periodClosed } = stepped;
 
   const groups = groupByResource(recovered);
   const { updateData, updateItems, applied } = buildRecoveryUpdates(actor, groups);
 
-  // Hit point debt follows the long-rest schedule, so a rest that does not credit long-rest
-  // cooldowns does not let wounds close either.
-  const beforeHp = credited.has(RECOVERY_GROUPS.long) ? advanced : debt.holdDebt(advanced);
-  const hp = debt.processRest(actor, beforeHp, newIndex);
+  const hp = resolveHitPoints(actor, advanced, newIndex, { credited, periodClosed });
   Object.assign(updateData, hp.updateData);
 
   const nextState = { ...hp.state, restIndex: newIndex, lastRestId: restId ?? null };
@@ -397,8 +517,11 @@ async function performRest(actor, { restId, advanceTime, chat, quality = REST_QU
     restIndex: newIndex,
     quality,
     held,
+    model: recoveryModel(),
+    period: nextState.period,
+    periodClosed,
     recovered: applied,
-    pending: summarizePending(pending, newIndex, auto),
+    pending: summarizePending(pending, newIndex, displayGroups()),
     healed: hp.healed,
     clearedDebt: hp.clearedDebt,
     repeated: false
@@ -413,6 +536,15 @@ async function performRest(actor, { restId, advanceTime, chat, quality = REST_QU
      * @param {import("./models.mjs").RecoveryEntry} entry
      */
     Hooks.callAll("grittyRealism.resourceRecovered", actor, entry);
+  }
+
+  if ( periodClosed ) {
+    /**
+     * Fires when a long-rest period reaches its end and hands everything back.
+     * @param {Actor} actor
+     * @param {object} report
+     */
+    Hooks.callAll("grittyRealism.periodCompleted", actor, report);
   }
 
   /**
@@ -602,6 +734,37 @@ async function applyMutation(actor, kind, payload) {
       if ( !cleared.length && !payload.clearDebt ) return { cleared: 0 };
       for ( const entry of cleared ) Hooks.callAll("grittyRealism.resourceRecovered", actor, entry);
       log.debug(`Native ${payload.type} rest cleared ${cleared.length} ledger entr(ies) for ${actor.name}.`);
+      break;
+    }
+
+    case "setPeriod": {
+      const length = Math.max(1, setting(SETTINGS.periodLength));
+      const remaining = Math.clamp(Math.trunc(payload.remaining) || 0, 0, length);
+      state = { ...state, period: { length, remaining } };
+      break;
+    }
+
+    case "completePeriod": {
+      // Close the period here and now, exactly as a rest reaching zero would.
+      const length = Math.max(1, setting(SETTINGS.periodLength));
+      const { state: flushed, recovered } = flushGroups(state, periodRecoverGroups());
+
+      const updates = buildRecoveryUpdates(actor, groupByResource(recovered));
+      if ( !foundry.utils.isEmpty(updates.updateData) ) {
+        await actor.update(updates.updateData, internalContext());
+      }
+      if ( updates.updateItems.length ) {
+        await actor.updateEmbeddedDocuments("Item", updates.updateItems, internalContext());
+      }
+
+      state = { ...flushed, period: { length, remaining: length } };
+      if ( setting(SETTINGS.periodRecoversDamage) ) {
+        const hp = debt.clearAll(actor, state);
+        state = hp.state;
+        if ( !foundry.utils.isEmpty(hp.updateData) ) await actor.update(hp.updateData, internalContext());
+      }
+
+      for ( const entry of recovered ) Hooks.callAll("grittyRealism.resourceRecovered", actor, entry);
       break;
     }
 

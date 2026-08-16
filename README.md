@@ -79,6 +79,30 @@ You may spend hit dice from the same dialog before committing. Confirming advanc
 index by one, restores everything that has matured, and posts the system's own rest card with
 the module's summary attached.
 
+### Two recovery models
+
+**Per-expenditure cooldowns** (default) is everything described above: each thing you spend runs
+its own clock and comes back on its own schedule.
+
+**Long rest period** is the alternative. Nothing comes back on its own at all. Instead a rolling
+long rest runs in the background — 7 Rests by default — and when it closes, *everything* the
+period covers returns at once and the next period opens immediately:
+
+```
+Rest 1   long rest 6/7   nothing returns
+Rest 2   long rest 5/7   nothing returns
+  ...
+Rest 7   long rest 0/7   →  everything returns, next period opens at 7/7
+```
+
+Which groups a closing period hands back is configurable, as is whether it heals damage. A poor
+night never counts towards the period, using the same switch the other model uses — a week of
+broken sleep never completes a long rest.
+
+Switching between the models is safe in both directions: expenditures keep their individual
+timers while the period model runs, so going back to cooldowns resumes them exactly where they
+stood.
+
 ### Rest quality
 
 Every rest is taken as either **slept well** or **slept badly**. A poor night still passes time
@@ -176,6 +200,9 @@ All settings live on one screen: **Configure Settings → Gritty Realism Rests �
 
 | Setting | Default | Notes |
 | --- | --- | --- |
+| Recovery model | Per-expenditure cooldowns | Or the long rest period. |
+| Rests per long rest | 7 | Period model only. |
+| What a closing period returns | all groups + damage | Period model only. |
 | Short / Long / Daily / Hit Dice cooldown | 1 / 7 / 1 / 14 | Rests per recovery period. |
 | Hit point mode | Recovery Debt | Or Gritty Standard. |
 | Healing order | Oldest first (FIFO) | See below. |
@@ -293,6 +320,7 @@ api.registerRecoveryRule("my-module.chef-feat", ({ item }) => {
 | `grittyRealism.restComplete` | `(actor, report)` | |
 | `grittyRealism.resourceSpent` | `(actor, entry)` | Once per expenditure. |
 | `grittyRealism.resourceRecovered` | `(actor, entry)` | Once per matured entry. |
+| `grittyRealism.periodCompleted` | `(actor, report)` | A long rest period reached its end. |
 
 `dnd5e.restCompleted` also fires for every Take Rest, so modules that already listen for rests
 keep working.

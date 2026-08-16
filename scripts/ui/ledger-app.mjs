@@ -1,6 +1,6 @@
 import { MODULE_ID, groupOfPeriod, t } from "../constants.mjs";
 import { readState } from "../data/actor-store.mjs";
-import { mutate, advanceRests } from "../domain/rest-service.mjs";
+import { mutate, advanceRests, getPeriod } from "../domain/rest-service.mjs";
 import { totalDebt } from "../domain/hp-debt.mjs";
 import { promptNewEntry } from "./entry-dialog.mjs";
 
@@ -29,7 +29,9 @@ export default class LedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
       setRestIndex: LedgerApp.#onSetRestIndex,
       setDebt: LedgerApp.#onSetDebt,
       reset: LedgerApp.#onReset,
-      addEntry: LedgerApp.#onAddEntry
+      addEntry: LedgerApp.#onAddEntry,
+      setPeriod: LedgerApp.#onSetPeriod,
+      completePeriod: LedgerApp.#onCompletePeriod
     }
   };
 
@@ -64,9 +66,12 @@ export default class LedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
     const context = await super._prepareContext(options);
     const state = readState(this.actor);
 
+    const period = getPeriod(this.actor);
+
     return Object.assign(context, {
       actor: this.actor,
       restIndex: state.restIndex,
+      period,
       entries: state.entries
         .slice()
         .sort((a, b) => a.recoverAtRestIndex - b.recoverAtRestIndex)
@@ -169,6 +174,21 @@ export default class LedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
    */
   static async #onAddEntry() {
     if ( await promptNewEntry(this.actor) ) this.render();
+  }
+
+  /**
+   * @this {LedgerApp}
+   */
+  static async #onSetPeriod() {
+    const input = this.element.querySelector('[name="periodRemaining"]');
+    await this.#apply("setPeriod", { remaining: Math.max(0, Math.trunc(Number(input?.value) || 0)) });
+  }
+
+  /**
+   * @this {LedgerApp}
+   */
+  static async #onCompletePeriod() {
+    await this.#apply("completePeriod", {});
   }
 
   /**

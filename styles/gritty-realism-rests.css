@@ -264,6 +264,65 @@
 }
 
 /* -------------------------------------------- */
+/*  Long rest period                            */
+/* -------------------------------------------- */
+
+.gritty-realism .gritty-period {
+  margin-bottom: 0.6rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--gritty-rule);
+  border-radius: 4px;
+  background: rgb(0 0 0 / 4%);
+}
+
+.gritty-realism .gritty-period-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--font-size-13, 0.8125rem);
+}
+
+.gritty-realism .gritty-period-label {
+  font-weight: 600;
+}
+
+.gritty-realism .gritty-period-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.gritty-realism .gritty-period-closing {
+  color: var(--gritty-ready);
+  font-weight: 600;
+}
+
+.gritty-realism .gritty-period-stalled {
+  color: #4d7fa8;
+}
+
+.gritty-realism .gritty-period-track {
+  display: flex;
+  gap: 3px;
+  margin-top: 0.35rem;
+}
+
+.gritty-realism .gritty-period-pip {
+  flex: 1 1 0;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--gritty-rule);
+}
+
+.gritty-realism .gritty-period-pip.spent {
+  background: var(--gritty-pending);
+}
+
+.gritty-realism .gritty-period + .gritty-section {
+  margin-top: 0;
+}
+
+/* -------------------------------------------- */
 /*  Cooldown group badge                        */
 /* -------------------------------------------- */
 

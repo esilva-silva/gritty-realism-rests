@@ -230,6 +230,15 @@ function renderDisplay(actor) {
     `modules/${MODULE_ID}/templates/rest-panel.hbs`,
     {
       restIndex: state.restIndex,
+      period: state.period,
+      periodModel: !!state.period,
+      // Precomputed rather than built with template helpers: Foundry only ships a small set of
+      // Handlebars helpers, and neither a range nor a numeric comparison is among them.
+      periodPips: state.period
+        ? Array.from({ length: state.period.length }, (unused, i) => ({
+          spent: i < (state.period.length - state.period.remaining)
+        }))
+        : [],
       ready: state.ready.map(line => ({
         ...line,
         showAmount: line.amount > 1,
@@ -239,11 +248,13 @@ function renderDisplay(actor) {
         ...line,
         showAmount: line.amount > 1,
         groupLabel: t(`Group.${line.group}`),
-        // A group with automatic recovery switched off shows its bare count — it has stopped
-        // being a countdown and become a standing debt.
-        rests: !line.automatic ? String(line.remaining)
-          : (line.remaining === 1) ? t("Rest.OneRestRemaining")
-            : t("Rest.RestsRemaining", { count: line.remaining })
+        // Under the period model an individual countdown would be a lie — the period is the
+        // only clock — so the row shows no number at all. Otherwise a group with automatic
+        // recovery switched off shows its bare count: a standing debt, not a countdown.
+        rests: state.period ? ""
+          : !line.automatic ? String(line.remaining)
+            : (line.remaining === 1) ? t("Rest.OneRestRemaining")
+              : t("Rest.RestsRemaining", { count: line.remaining })
       })),
       debt: state.debt,
       debtTotal: state.debtTotal,

@@ -181,6 +181,38 @@ export function processRest(actor, state, newRestIndex) {
 }
 
 /**
+ * Settle every outstanding wound at once and refill hit points.
+ *
+ * Used when a long-rest period closes, where the period is the clock and individual maturities
+ * do not apply. Unlike {@link processRest} this ignores the automatic-recovery switch: reaching
+ * the end of a period *is* the deliberate recovery, not the passage of time doing it quietly.
+ *
+ * @param {Actor} actor
+ * @param {import("./models.mjs").RestState} state
+ * @returns {{state: object, updateData: object, healed: number, clearedDebt: number}}
+ */
+export function clearAll(actor, state) {
+  const hp = actor.system?.attributes?.hp;
+  if ( !hp || !state.debt.length ) return { state, updateData: {}, healed: 0, clearedDebt: 0 };
+
+  const max = Math.max(0, hp.effectiveMax ?? hp.max ?? 0);
+  const current = hp.value ?? 0;
+  const clearedDebt = totalDebt(state);
+  const restored = Math.min(max, current + clearedDebt);
+  const healed = restored - current;
+
+  const next = { ...state, debt: [] };
+  if ( healed <= 0 ) return { state: next, updateData: {}, healed: 0, clearedDebt };
+
+  return {
+    state: next,
+    updateData: { "system.attributes.hp.value": restored },
+    healed,
+    clearedDebt
+  };
+}
+
+/**
  * Debt lines for the sheet panel and the GM ledger, soonest to mature first.
  * @param {import("./models.mjs").RestState} state
  * @returns {Array<{id: string, remaining: number, rests: number}>}

@@ -93,6 +93,13 @@ export default class RestDialog extends HandlebarsApplicationMixin(ApplicationV2
     return Object.assign(context, {
       actor: this.actor,
       preview,
+      periodModel: !!preview.period,
+      // A poor night leaves the counter where it is, so show the same number twice rather than
+      // implying progress that will not happen.
+      periodFrom: preview.periodBefore,
+      periodTo: preview.period?.remaining,
+      periodStalls: !!preview.period && (preview.periodBefore === preview.period.remaining),
+      periodClosing: preview.periodClosed,
       qualities: Object.values(REST_QUALITIES).map(value => ({
         value,
         label: t(`Rest.Quality.${value}.Label`),

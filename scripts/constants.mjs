@@ -55,7 +55,28 @@ export const SETTINGS = {
   autoRecoverDay: "autoRecoverDay",
   autoRecoverHitDice: "autoRecoverHitDice",
   autoRecoverDamage: "autoRecoverDamage",
+  recoveryModel: "recoveryModel",
+  periodLength: "periodLength",
+  periodRecoversShort: "periodRecoversShort",
+  periodRecoversLong: "periodRecoversLong",
+  periodRecoversDay: "periodRecoversDay",
+  periodRecoversHitDice: "periodRecoversHitDice",
+  periodRecoversDamage: "periodRecoversDamage",
   logLevel: "logLevel"
+};
+
+/**
+ * How recovery is paced.
+ * @enum {string}
+ */
+export const RECOVERY_MODELS = {
+  /** Each expenditure carries its own cooldown and matures on its own schedule. */
+  ledger: "ledger",
+  /**
+   * A rolling long-rest period. Nothing returns while it runs; when it closes, everything the
+   * period covers comes back at once and a fresh period opens immediately.
+   */
+  period: "period"
 };
 
 /**

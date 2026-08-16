@@ -42,12 +42,19 @@ import { SCHEMA_VERSION, ORIGINS, RESOURCE_KINDS } from "../constants.mjs";
  */
 
 /**
+ * @typedef {object} RestPeriod
+ * @property {number} remaining  Rests left before the long-rest period closes.
+ * @property {number} length     Rests the period was opened with.
+ */
+
+/**
  * @typedef {object} RestState
  * @property {number} schemaVersion
  * @property {number} restIndex
  * @property {string|null} lastRestId
  * @property {RecoveryEntry[]} entries
  * @property {DebtEntry[]} debt
+ * @property {RestPeriod|null} period  Only meaningful under the period recovery model.
  */
 
 /**
@@ -60,7 +67,10 @@ export function blankState() {
     restIndex: 0,
     lastRestId: null,
     entries: [],
-    debt: []
+    debt: [],
+    // Purely additive: a state written before the period model existed normalizes to null and
+    // behaves exactly as it always did, which is why this needed no schema bump or migration.
+    period: null
   };
 }
 
@@ -94,8 +104,25 @@ export function normalizeState(raw) {
   state.lastRestId = (typeof raw.lastRestId === "string") ? raw.lastRestId : null;
   state.entries = (Array.isArray(raw.entries) ? raw.entries : []).map(normalizeEntry).filter(e => e !== null);
   state.debt = (Array.isArray(raw.debt) ? raw.debt : []).map(normalizeDebt).filter(d => d !== null);
+  state.period = normalizePeriod(raw.period);
 
   return state;
+}
+
+/**
+ * @param {object} [raw]
+ * @returns {RestPeriod|null}  `null` when no period has been opened.
+ */
+function normalizePeriod(raw) {
+  if ( !raw || (typeof raw !== "object") ) return null;
+
+  const length = Math.max(1, int(raw.length, 1));
+  return {
+    length,
+    // Clamped to the length it was opened with: a hand-edited value larger than the period
+    // would otherwise stretch the long rest indefinitely.
+    remaining: Math.clamp(int(raw.remaining, length), 0, length)
+  };
 }
 
 /**
