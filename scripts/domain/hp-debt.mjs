@@ -24,6 +24,14 @@ export function hpMode() {
 }
 
 /**
+ * Does damage heal on its own as rests pass?
+ * @returns {boolean}
+ */
+export function recoversAutomatically() {
+  return setting(SETTINGS.autoRecoverDamage);
+}
+
+/**
  * Record damage as debt.
  *
  * @param {import("./models.mjs").RestState} state
@@ -97,6 +105,9 @@ export function payDebt(state, hitPoints) {
  */
 export function holdDebt(state) {
   if ( !state.debt.length ) return state;
+  // Debt that never closes on its own is already parked at zero; pushing it further out would
+  // only inflate a number nobody is waiting on.
+  if ( !recoversAutomatically() ) return state;
   return {
     ...state,
     debt: state.debt.map(entry => ({ ...entry, recoverAtRestIndex: entry.recoverAtRestIndex + 1 }))
@@ -128,6 +139,10 @@ export function totalDebt(state) {
 export function processRest(actor, state, newRestIndex) {
   const hp = actor.system?.attributes?.hp;
   if ( !hp ) return { state, updateData: {}, healed: 0, clearedDebt: 0 };
+
+  // With automatic recovery switched off for damage, wounds never close by themselves. They
+  // still count down and settle at zero, waiting for healing or for the GM to clear them.
+  if ( !recoversAutomatically() ) return { state, updateData: {}, healed: 0, clearedDebt: 0 };
 
   const max = Math.max(0, hp.effectiveMax ?? hp.max ?? 0);
   const current = hp.value ?? 0;
@@ -171,11 +186,13 @@ export function processRest(actor, state, newRestIndex) {
  * @returns {Array<{id: string, remaining: number, rests: number}>}
  */
 export function summarizeDebt(state) {
+  const automatic = recoversAutomatically();
   return state.debt
     .map(entry => ({
       id: entry.id,
       remaining: entry.remaining,
-      rests: Math.max(0, entry.recoverAtRestIndex - state.restIndex)
+      rests: Math.max(0, entry.recoverAtRestIndex - state.restIndex),
+      automatic
     }))
     .sort((a, b) => a.rests - b.rests);
 }

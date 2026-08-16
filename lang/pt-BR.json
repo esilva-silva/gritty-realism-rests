@@ -196,5 +196,7 @@
   "GRITTY.Settings.AutoRecoverDay.Name": "Recursos diários recuperam automaticamente",
   "GRITTY.Settings.AutoRecoverDay.Hint": "",
   "GRITTY.Settings.AutoRecoverHitDice.Name": "Dados de vida recuperam automaticamente",
-  "GRITTY.Settings.AutoRecoverHitDice.Hint": ""
+  "GRITTY.Settings.AutoRecoverHitDice.Hint": "",
+  "GRITTY.Settings.AutoRecoverDamage.Name": "Dano sofrido sara automaticamente",
+  "GRITTY.Settings.AutoRecoverDamage.Hint": "Desligado, os ferimentos nunca fecham sozinhos: a dívida para em 0 e só a cura, ou o GM, resolve."
 }

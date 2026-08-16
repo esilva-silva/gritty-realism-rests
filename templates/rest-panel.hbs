@@ -95,9 +95,14 @@
         <h4>{{localize "GRITTY.Panel.Debt"}}</h4>
         <ul class="gritty-list">
             {{#each debt}}
-            <li>
+            <li class="{{#unless this.automatic}}manual{{/unless}}">
                 <i class="fa-solid fa-droplet" inert></i>
                 <span class="gritty-label">{{localize "GRITTY.Panel.DebtAmount" remaining=this.remaining count=this.rests}}</span>
+                {{#unless this.automatic}}
+                <span class="gritty-remaining">
+                    <i class="fa-solid fa-lock" inert data-tooltip="{{localize 'GRITTY.Panel.ManualOnly'}}"></i>
+                </span>
+                {{/unless}}
             </li>
             {{/each}}
         </ul>

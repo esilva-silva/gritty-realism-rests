@@ -50,6 +50,7 @@ export const SETTING_DEFINITIONS = [
   { key: SETTINGS.autoRecoverLong, group: "autoRecovery", type: Boolean, default: true },
   { key: SETTINGS.autoRecoverDay, group: "autoRecovery", type: Boolean, default: true },
   { key: SETTINGS.autoRecoverHitDice, group: "autoRecovery", type: Boolean, default: true },
+  { key: SETTINGS.autoRecoverDamage, group: "autoRecovery", type: Boolean, default: true },
 
   { key: SETTINGS.restDuration, group: "rest", type: Number, default: 480, range: { min: 0, max: 10080 } },
   { key: SETTINGS.exhaustionDelta, group: "rest", type: Number, default: 0, range: { min: -6, max: 6 } },

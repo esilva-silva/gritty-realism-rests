@@ -23,6 +23,7 @@ const SETTINGS_VALUES = {
   hitDiceRestCount: 14,
   hpMode: "debt",
   debtOrder: "fifo",
+  autoRecoverDamage: true,
   restDuration: 480,
   logLevel: "off"
 };
@@ -366,6 +367,37 @@ console.log("\n--- A non-recovering entry settles at 0 and is flagged manual ---
   const held = tracker.holdUncredited(state, NO_LONG, NO_LONG);
   check("a poor night does not push it further out", held.held, 0);
   check("its maturity is untouched", held.state.entries[0].recoverAtRestIndex, 7);
+}
+
+console.log("\n--- Damage can be told never to heal on its own ---");
+{
+  const actor = { system: { attributes: { hp: { value: 30, max: 50, effectiveMax: 50 } } } };
+  let state = blankState();
+  state = debt.incurDebt(state, 12);
+
+  // With automatic healing on, rest 7 closes the wound.
+  check("automatic: the wound closes at rest 7", debt.processRest(actor, state, 7).healed, 12);
+
+  SETTINGS_VALUES.autoRecoverDamage = false;
+  check("manual: nothing closes at rest 7", debt.processRest(actor, state, 7).healed, 0);
+  check("nor ever after", debt.processRest(actor, state, 999).healed, 0);
+  check("and the debt is still owed", debt.totalDebt(debt.processRest(actor, state, 999).state), 12);
+  check("a poor night does not inflate it",
+    debt.holdDebt(state).debt[0].recoverAtRestIndex, 7);
+  check("it reads as manual in the summary", debt.summarizeDebt(state)[0].automatic, false);
+
+  // Healing still works — that is the point: only time stops mending wounds.
+  check("healing still pays it down", debt.payDebt(state, 5).paid, 5);
+
+  SETTINGS_VALUES.autoRecoverDamage = true;
+  check("and Mode A full heal is gated too", (() => {
+    SETTINGS_VALUES.hpMode = "gritty";
+    SETTINGS_VALUES.autoRecoverDamage = false;
+    const r = debt.processRest(actor, blankState(), 7).healed;
+    SETTINGS_VALUES.hpMode = "debt";
+    SETTINGS_VALUES.autoRecoverDamage = true;
+    return r;
+  })(), 0);
 }
 
 console.log("\n--- normalizeState discards malformed entries ---");

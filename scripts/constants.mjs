@@ -54,6 +54,7 @@ export const SETTINGS = {
   autoRecoverLong: "autoRecoverLong",
   autoRecoverDay: "autoRecoverDay",
   autoRecoverHitDice: "autoRecoverHitDice",
+  autoRecoverDamage: "autoRecoverDamage",
   logLevel: "logLevel"
 };
 

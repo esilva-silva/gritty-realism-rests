@@ -196,5 +196,7 @@
   "GRITTY.Settings.AutoRecoverDay.Name": "Daily resources recover automatically",
   "GRITTY.Settings.AutoRecoverDay.Hint": "",
   "GRITTY.Settings.AutoRecoverHitDice.Name": "Hit dice recover automatically",
-  "GRITTY.Settings.AutoRecoverHitDice.Hint": ""
+  "GRITTY.Settings.AutoRecoverHitDice.Hint": "",
+  "GRITTY.Settings.AutoRecoverDamage.Name": "Damage taken heals automatically",
+  "GRITTY.Settings.AutoRecoverDamage.Hint": "Off means wounds never close on their own: the debt settles at 0 and only healing, or the GM, clears it."
 }
