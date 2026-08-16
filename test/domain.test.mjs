@@ -400,6 +400,34 @@ console.log("\n--- Damage can be told never to heal on its own ---");
   })(), 0);
 }
 
+console.log("\n--- A native rest clears real resources but never a hand-made note ---");
+{
+  // Mirrors what syncNativeRest does: clear entries whose period the system just restored,
+  // leaving free-standing notes alone because no system resource stands behind them.
+  const clear = (entries, periods) => entries.filter(e =>
+    (e.resource.kind === "note") || !periods.has(e.policy.period));
+
+  let state = blankState();
+  state = tracker.record(state, [spend(state, slot3, 7, "Spell Slot", "lr")]).state;
+  state = tracker.record(state, [spend(state, surge, 1, "Channel Divinity", "sr")]).state;
+  state = tracker.record(state, [makeEntry({
+    resource: { kind: "note", keyPath: "", key: "n1" },
+    amount: 1,
+    policy: { period: "lr", restCount: 3, source: "manual" },
+    restIndex: 0,
+    label: "Cracked ribs"
+  })]).state;
+
+  const afterShort = clear(state.entries, new Set(["sr"]));
+  check("a short rest clears only the short-rest resource",
+    afterShort.map(e => e.label), ["Spell Slot", "Cracked ribs"]);
+
+  const afterLong = clear(state.entries, new Set(["lr", "sr"]));
+  check("a long rest clears both real resources", afterLong.map(e => e.label), ["Cracked ribs"]);
+  check("but the note survives, despite sharing the long-rest period",
+    afterLong[0].resource.kind, "note");
+}
+
 console.log("\n--- normalizeState discards malformed entries ---");
 {
   const s = normalizeState({

@@ -575,7 +575,11 @@ async function applyMutation(actor, kind, payload) {
       const cleared = [];
 
       for ( const entry of state.entries ) {
-        if ( periods.has(entry.policy.period) ) cleared.push(entry);
+        // Free-standing entries are exempt. This reconciliation exists because the system just
+        // refilled a real resource, which makes the ledger entry for it stale — and a note has
+        // no resource behind it. A lingering wound does not close because somebody slept.
+        const isNote = entry.resource.kind === RESOURCE_KINDS.note;
+        if ( !isNote && periods.has(entry.policy.period) ) cleared.push(entry);
         else kept.push(entry);
       }
 
